@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f2f5fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="カク算">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="カク算 KAKUZAN — たす・ひく・かける・わる × マス目のパズル。スマホ縦長画面対応、サウンドON/OFF、多言語、セーブデータは端末内に保存。">
+<title>カク算 KAKUZAN — 四則演算パズル</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f0803c'/%3E%3Ctext x='32' y='45' font-size='34' text-anchor='middle' fill='%23fff' font-family='sans-serif' font-weight='700'%3E算%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<!-- ==== Libraries (loaded from CDN) ==== -->
+<script src="https://cdn.jsdelivr.net/npm/i18next@23.11.5/dist/umd/i18next.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js" defer></script>
+
+<style>
+:root{
+  --bg:#f1f4fb; --bg-2:#e4eaf7; --panel:#ffffff; --panel-2:#f7f9ff;
+  --ink:#16203a; --muted:#6b7a99; --line:#d5dcea;
+  --accent:#f0803c; --accent-2:#ff9d5c; --on-accent:#ffffff;
+  --good:#12a06a; --bad:#e04b4b; --warn:#e2a30d;
+  --shadow:0 12px 34px rgba(22,32,58,.10);
+  --cage-alpha:.12;
+  --r:18px;
+}
+[data-theme="dark"]{
+  --bg:#0e1424; --bg-2:#141d31; --panel:#19223a; --panel-2:#1f2a45;
+  --ink:#e9eefc; --muted:#93a3c6; --line:#2c3a5b;
+  --accent:#ff8f4c; --accent-2:#ffb07a; --on-accent:#231202;
+  --good:#3fd39a; --bad:#ff7070; --warn:#ffc84d;
+  --shadow:0 14px 38px rgba(0,0,0,.45);
+  --cage-alpha:.22;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none !important}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%) fixed,
+    var(--bg);
+  color:var(--ink);
+  font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums;
+  display:flex;justify-content:center;
+  min-height:100vh;min-height:100svh;
+  overscroll-behavior:none;
+}
+#app{
+  position:relative;width:min(100%,480px);min-height:100vh;min-height:100svh;
+  display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--panel) 55%, transparent), transparent 240px);
+}
+.screen{display:none;flex-direction:column;gap:12px;flex:1}
+.screen.active{display:flex}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none;font-size:15px}
+h1,h2,h3,p{margin:0}
+
+/* ---------- header ---------- */
+#app-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 6px}
+.brand-mini{display:flex;align-items:baseline;gap:7px;cursor:pointer}
+.brand-mini b{font-size:19px;font-weight:800;letter-spacing:.04em}
+.brand-mini span{font-size:10px;color:var(--muted);letter-spacing:.18em}
+.head-actions{display:flex;gap:6px}
+.icon-btn{
+  width:40px;height:40px;border-radius:13px;background:var(--panel);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:var(--shadow);
+  transition:transform .08s ease;position:relative;
+}
+.icon-btn:active{transform:scale(.93)}
+.icon-btn .on-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* ---------- menu ---------- */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 0 4px;gap:10px}
+.hero-mark{
+  width:78px;height:78px;border-radius:24px;background:linear-gradient(150deg,var(--accent),var(--accent-2));
+  color:#fff;font-size:40px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 12px 26px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.logo{font-size:34px;font-weight:800;letter-spacing:.06em;line-height:1}
+.logo small{display:block;font-size:11px;letter-spacing:.34em;color:var(--muted);font-weight:700;margin-top:6px}
+.tagline{font-size:13px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+.card-title{font-size:11px;letter-spacing:.16em;color:var(--muted);font-weight:700;margin-bottom:9px}
+.card-title + .card-title, .card > * + *{margin-top:0}
+.card .gap{margin-top:14px}
+.chips{display:flex;gap:8px}
+.chip{
+  flex:1;padding:11px 4px;border-radius:14px;background:var(--panel-2);border:1.5px solid var(--line);
+  font-weight:700;font-size:15px;text-align:center;transition:all .12s ease;
+}
+.chip small{display:block;font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.08em;margin-top:2px}
+.chip.sel{background:linear-gradient(160deg,var(--accent),var(--accent-2));border-color:transparent;color:var(--on-accent)}
+.chip.sel small{color:color-mix(in srgb,var(--on-accent) 80%,transparent)}
+.stage-row{display:flex;align-items:center;gap:8px}
+.stage-row .icon-btn{flex:0 0 40px}
+.stage-label{flex:1;text-align:center;font-weight:800;font-size:17px;letter-spacing:.06em}
+.stage-label small{display:block;font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700;margin-top:2px}
+.stage-dots{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.stage-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.stage-dots i.done{background:var(--good)}
+.stage-dots i.cur{background:var(--accent);transform:scale(1.35)}
+.cta-stack{display:flex;flex-direction:column;gap:9px;margin-top:auto;padding-top:8px}
+.howto{display:flex;flex-direction:column;gap:9px}
+.howto-item{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--muted);line-height:1.45}
+.howto-item b{
+  flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--accent);color:var(--on-accent);
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;
+}
+.howto-item i{font-style:normal;font-weight:800;color:var(--ink)}
+.btn{
+  border-radius:16px;padding:14px 16px;font-weight:800;font-size:15px;display:flex;align-items:center;
+  justify-content:center;gap:9px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
+  transition:transform .08s ease;
+}
+.btn:active{transform:scale(.975)}
+.btn-lg{padding:18px 16px;font-size:18px;border-radius:20px}
+.btn-primary{background:linear-gradient(150deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent;
+  box-shadow:0 12px 26px color-mix(in srgb, var(--accent) 42%, transparent)}
+.btn-daily{background:linear-gradient(150deg,#3f7dfb,#6fb0ff);color:#fff;border-color:transparent;
+  box-shadow:0 12px 26px color-mix(in srgb, #3f7dfb 38%, transparent)}
+.btn-soft{flex:1;padding:12px 8px;font-size:13px;background:var(--panel-2)}
+.btn-ghost{background:transparent;border:1.5px dashed var(--line);box-shadow:none}
+.btn-row{display:flex;gap:9px}
+.cta-icon{font-size:.95em;opacity:.95}
+.badge{font-size:10px;font-weight:800;background:rgba(255,255,255,.25);padding:3px 7px;border-radius:999px;letter-spacing:.06em}
+.sub{font-size:11px;font-weight:700;color:var(--muted);margin-left:6px}
+.btn-daily .sub{color:rgba(255,255,255,.85)}
+.foot{margin-top:auto;text-align:center;font-size:10px;color:var(--muted);padding:12px 0 4px;line-height:1.6}
+
+/* ---------- game ---------- */
+.gbar{display:flex;align-items:center;gap:10px}
+.gbar-meta{flex:1;text-align:center;line-height:1.25}
+.gbar-level{font-weight:800;font-size:15px;letter-spacing:.05em}
+.gbar-sub{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.gstat{display:flex;gap:7px;align-items:stretch}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 10px;display:flex;align-items:center;gap:7px;font-size:12px;box-shadow:var(--shadow)}
+.pill-k{color:var(--muted);font-size:10px;letter-spacing:.08em;font-weight:700}
+.pill b{font-size:14px}
+.pill-fill{flex:1;justify-content:flex-end}
+.bar{flex:1;height:6px;border-radius:999px;background:var(--line);overflow:hidden;min-width:40px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .25s ease}
+.board-wrap{position:relative;margin-top:2px}
+.board{
+  width:min(100%, calc(100svh - 350px));margin:0 auto;aspect-ratio:1/1;background:var(--panel);border-radius:16px;box-shadow:var(--shadow);
+  display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);
+  border:3px solid var(--ink);user-select:none;touch-action:none;position:relative;overflow:hidden;
+}
+.board.shake{animation:shake .38s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.cell{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  border-top:var(--bt,1px) solid var(--cage-line,var(--line));
+  border-left:var(--bl,1px) solid var(--cage-line,var(--line));
+  border-right:var(--br,1px) solid var(--cage-line,var(--line));
+  border-bottom:var(--bb,1px) solid var(--cage-line,var(--line));
+  font-weight:800;font-size:calc(min(12vw, 62px) - var(--n) * 4px);
+  transition:background .12s ease;
+}
+[data-theme="dark"] .cell{--cage-line:color-mix(in srgb,var(--ink) 22%,transparent)}
+.cell.cg0{background:hsl(206 92% 56% / var(--cage-alpha))}
+.cell.cg1{background:hsl(24 92% 52% / var(--cage-alpha))}
+.cell.cg2{background:hsl(152 62% 40% / var(--cage-alpha))}
+.cell.cg3{background:hsl(278 66% 56% / var(--cage-alpha))}
+.cell.cg4{background:hsl(44 94% 48% / var(--cage-alpha))}
+.cell.cg5{background:hsl(332 74% 54% / var(--cage-alpha))}
+.cell.peer{background-color:color-mix(in srgb,var(--accent) 8%,transparent)}
+.cell.sel{background-color:color-mix(in srgb,var(--accent) 20%,transparent)}
+.cell.hintpop{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.6)}55%{transform:scale(1.16)}100%{transform:scale(1)}}
+.cell .clue{position:absolute;top:2px;left:3.5px;font-size:10.5px;font-weight:800;letter-spacing:-.02em;opacity:.82;line-height:1;pointer-events:none}
+.cell .digit{line-height:1;pointer-events:none}
+.cell .digit.given{color:var(--ink)}
+.cell .digit.conflict{color:var(--bad)}
+.cell .digit.bad{color:var(--bad)}
+.cell.ok .clue{color:var(--good)}
+.cell .notes{
+  position:absolute;top:2px;right:2px;display:grid;grid-template-columns:repeat(3,1fr);gap:0 1px;
+  font-size:9.5px;font-weight:700;line-height:1.12;text-align:center;color:var(--muted);max-width:62%;pointer-events:none;
+}
+.cell .notes i{font-style:normal;opacity:0}
+.cell .notes i.on{opacity:.95}
+.board-cover{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(100%, calc(100svh - 350px));aspect-ratio:1/1;border-radius:16px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;font-weight:800;
+  letter-spacing:.14em;color:var(--muted);font-size:14px;z-index:3;
+}
+.tools{display:flex;gap:6px;margin-top:auto;padding-top:10px}
+.tool{
+  flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 2px 7px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;font-size:19px;box-shadow:var(--shadow);
+  position:relative;transition:transform .08s ease;
+}
+.tool:active{transform:scale(.94)}
+.tool span{font-size:9.5px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.tool.on{background:linear-gradient(160deg,var(--accent),var(--accent-2));border-color:transparent;color:var(--on-accent)}
+.tool.on span{color:color-mix(in srgb,var(--on-accent) 85%,transparent)}
+.tool .cnt{position:absolute;top:3px;right:6px;font-size:9px;color:var(--muted)}
+.pad{display:grid;gap:6px;grid-template-columns:repeat(var(--n),1fr)}
+.pad button{
+  background:var(--panel);border:1px solid var(--line);border-radius:15px;height:clamp(48px,12.5vw,66px);
+  font-size:clamp(22px,7.2vw,30px);font-weight:800;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1;transition:transform .08s ease,background .12s ease;
+}
+.pad button:active{transform:scale(.95)}
+.pad button.active{background:linear-gradient(160deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
+.pad button i{font-style:normal;font-size:10px;font-weight:800;opacity:.6;margin-top:3px}
+.pad button.spent{opacity:.34}
+.ghint{font-size:11px;color:var(--muted);text-align:center;padding-top:2px}
+@media (hover:none) and (pointer:coarse){ .ghint{display:none} }
+
+/* ---------- settings / rules / stats ---------- */
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row-l{font-size:14px;font-weight:700}
+.row-l small{display:block;font-size:10.5px;color:var(--muted);font-weight:500;margin-top:2px;letter-spacing:0}
+.switch{width:52px;height:31px;border-radius:999px;background:var(--line);position:relative;flex:0 0 auto;transition:background .18s}
+.switch i{position:absolute;top:3px;left:3px;width:25px;height:25px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.22);transition:transform .18s}
+.switch.on{background:var(--accent)}
+.switch.on i{transform:translateX(21px)}
+.seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;flex-wrap:wrap;justify-content:flex-end}
+.seg button{padding:6px 11px;border-radius:9px;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.seg button.sel{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.text-small{font-size:12.5px;line-height:1.75;color:var(--ink)}
+.text-small b{color:var(--accent)}
+.text-small + .text-small{margin-top:9px}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:none}
+.kv b{font-variant-numeric:tabular-nums}
+.sec-title{font-size:12px;letter-spacing:.14em;color:var(--muted);font-weight:800;margin:2px 2px -4px}
+.danger{color:var(--bad)}
+
+/* ---------- overlay ---------- */
+#overlay{
+  position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;padding:18px;
+  background:rgba(8,12,24,.55);backdrop-filter:blur(4px);
+}
+#overlay.show{display:flex}
+.ov-card{
+  width:min(100%,380px);background:var(--panel);border-radius:24px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;gap:12px;animation:rise .28s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes rise{from{transform:translateY(18px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.ov-emoji{font-size:42px;text-align:center;line-height:1}
+.ov-title{text-align:center;font-size:23px;font-weight:800;letter-spacing:.05em}
+.ov-sub{text-align:center;font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.stars{display:flex;justify-content:center;gap:8px;font-size:29px}
+.stars span{color:var(--line);transition:color .2s,transform .3s}
+.stars span.on{color:#f5b301;transform:scale(1.08)}
+.newrec{align-self:center;background:var(--good);color:#fff;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:999px;letter-spacing:.1em}
+.ov-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ov-stat{background:var(--panel-2);border-radius:14px;padding:9px 4px;text-align:center}
+.ov-stat i{display:block;font-style:normal;font-size:9.5px;color:var(--muted);letter-spacing:.06em;font-weight:700}
+.ov-stat b{font-size:16px}
+#toast{
+  position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 22px);transform:translate(-50%,14px);
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:12.5px;font-weight:700;
+  opacity:0;pointer-events:none;transition:all .22s ease;z-index:60;max-width:88%;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="app-head">
+    <div class="brand-mini" id="brand" role="button" tabindex="0">
+      <b id="brand-name">カク算</b><span id="brand-sub">KAKUZAN</span>
+    </div>
+    <div class="head-actions">
+      <button class="icon-btn" id="btn-lang" aria-label="Language">語</button>
+      <button class="icon-btn" id="btn-sound" aria-label="Sound"><span id="sound-icon">♪</span><i class="on-dot" id="sound-dot"></i></button>
+      <button class="icon-btn" id="btn-settings-top" aria-label="Settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- ===== MENU ===== -->
+  <section class="screen active" id="screen-menu">
+    <div class="hero">
+      <div class="hero-mark">算</div>
+      <h1 class="logo"><span data-i18n="app.name">カク算</span><small>KAKUZAN</small></h1>
+      <p class="tagline" data-i18n="app.tagline">たす・ひく・かける・わる × マス目のパズル</p>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title" data-i18n="menu.size">盤面のサイズ</h2>
+      <div class="chips" id="size-chips"></div>
+      <h2 class="card-title gap" data-i18n="menu.stage">ステージ</h2>
+      <div class="stage-row">
+        <button class="icon-btn" id="stage-prev" aria-label="prev">‹</button>
+        <div class="stage-label"><span id="stage-label">STAGE 1</span><small id="stage-diff">EASY</small></div>
+        <button class="icon-btn" id="stage-next" aria-label="next">›</button>
+      </div>
+      <div class="stage-dots" id="stage-dots"></div>
+    </div>
+
+    <div class="card howto" id="howto-card">
+      <div class="howto-item"><b>1</b><span data-i18n="menu.how1">各行・各列に 1〜N を1回ずつ入れる</span></div>
+      <div class="howto-item"><b>2</b><span data-i18n="menu.how2">枠の左上が計算ヒント（7+ なら合計が7）</span></div>
+      <div class="howto-item"><b>3</b><span data-i18n="menu.how3">なぞって連続入力 / ✎で候補メモ</span></div>
+    </div>
+
+    <div class="cta-stack">
+      <button class="btn btn-primary btn-lg" id="btn-play"><span class="cta-icon">▶</span><span data-i18n="menu.play">あそぶ</span></button>
+      <button class="btn btn-daily btn-lg" id="btn-daily"><span class="cta-icon">☀</span><span data-i18n="menu.daily">今日のチャレンジ</span><span class="badge" id="daily-badge" hidden></span></button>
+      <button class="btn btn-ghost" id="btn-continue" hidden><span data-i18n="menu.continue">つづける</span><span class="sub" id="continue-sub"></span></button>
+      <div class="btn-row">
+        <button class="btn btn-soft" data-i18n="menu.rules" id="btn-rules">ルール</button>
+        <button class="btn btn-soft" data-i18n="menu.stats" id="btn-stats">記録</button>
+        <button class="btn btn-soft" data-i18n="menu.settings" id="btn-settings">設定</button>
+      </div>
+    </div>
+    <footer class="foot" id="lib-note"></footer>
+  </section>
+
+  <!-- ===== GAME ===== -->
+  <section class="screen" id="screen-game">
+    <div class="gbar">
+      <button class="icon-btn" id="btn-back" aria-label="menu">‹</button>
+      <div class="gbar-meta">
+        <div class="gbar-level" id="g-level">4×4 · STAGE 1</div>
+        <div class="gbar-sub"><span id="g-time">00:00</span> · <span id="g-best">--:--</span></div>
+      </div>
+      <button class="icon-btn" id="btn-pause" aria-label="pause">❙❙</button>
+    </div>
+    <div class="gstat">
+      <div class="pill"><span class="pill-k" data-i18n="game.hints">ヒント</span><b id="s-hints">0</b></div>
+      <div class="pill"><span class="pill-k" data-i18n="game.mistakes">まちがい</span><b id="s-mistakes">0</b></div>
+      <div class="pill pill-fill"><span class="bar"><i id="s-bar"></i></span><b id="s-fill">0/16</b></div>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board" style="--n:4"></div>
+      <div class="board-cover" id="board-cover" hidden data-i18n="game.paused">一時停止中</div>
+    </div>
+    <div class="tools">
+      <button class="tool" id="t-erase">⌫<span data-i18n="game.erase">けす</span></button>
+      <button class="tool" id="t-undo">↺<span data-i18n="game.undo">もどす</span></button>
+      <button class="tool" id="t-notes">✎<span data-i18n="game.notes">メモ</span></button>
+      <button class="tool" id="t-hint">◉<span data-i18n="game.hint">ヒント</span></button>
+      <button class="tool" id="t-check">✓<span data-i18n="game.check">判定</span></button>
+    </div>
+    <div class="pad" id="pad" style="--n:4"></div>
+    <div class="ghint" data-i18n="game.kbdHint">PC: 1〜9 で入力 / ←↑↓→ で移動 / Backspace で削除 / N メモ / H ヒント</div>
+  </section>
+
+  <!-- ===== RULES ===== -->
+  <section class="screen" id="screen-rules">
+    <div class="sec-title" data-i18n="menu.rules">ルール</div>
+    <div class="card" id="rules-body"></div>
+    <button class="btn btn-primary" id="btn-rules-close" data-i18n="misc.close">とじる</button>
+  </section>
+
+  <!-- ===== STATS ===== -->
+  <section class="screen" id="screen-stats">
+    <div class="sec-title" data-i18n="menu.stats">記録</div>
+    <div class="card" id="stats-body"></div>
+    <button class="btn btn-primary" id="btn-stats-close" data-i18n="misc.close">とじる</button>
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section class="screen" id="screen-settings">
+    <div class="sec-title" data-i18n="menu.settings">設定</div>
+    <div class="card">
+      <div class="row">
+        <div class="row-l"><span data-i18n="settings.language">言語 / Language</span></div>
+        <div class="seg" id="lang-seg"></div>
+      </div>
+      <div class="row">
+        <div class="row-l"><span data-i18n="settings.sound">サウンド</span><small data-i18n="settings.soundNote">操作音とクリアファンファーレ</small></div>
+        <div class="switch" id="sw-sound"><i></i></div>
+      </div>
+      <div class="row">
+        <div class="row-l"><span data-i18n="settings.autoCheck">リアルタイム判定</span><small data-i18n="settings.autoCheckNote">同じ数字が重なったらすぐ赤く表示</small></div>
+        <div class="switch" id="sw-auto"><i></i></div>
+      </div>
+      <div class="row">
+        <div class="row-l"><span data-i18n="settings.theme">テーマ</span></div>
+        <div class="seg" id="theme-seg">
+          <button data-theme-val="light" data-i18n="settings.light">明るい</button>
+          <button data-theme-val="dark" data-i18n="settings.dark">暗い</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-l"><span data-i18n="settings.autosave">自動セーブ</span><small id="autosave-note"></small></div>
+        <div class="seg"><button class="sel" data-i18n="settings.autosaveOn">ON</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="row-l danger"><span data-i18n="settings.reset">セーブデータを削除</span><small data-i18n="settings.resetNote">記録と進行がすべて消えます</small></div>
+        <button class="btn btn-soft danger" style="flex:0 0 auto;padding:9px 12px" id="btn-reset" data-i18n="settings.resetBtn">削除</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2 class="card-title" data-i18n="settings.about">このアプリについて</h2>
+      <p class="text-small" id="about-text"></p>
+    </div>
+    <button class="btn btn-primary" id="btn-settings-close" data-i18n="misc.close">とじる</button>
+  </section>
+
+</div>
+
+<div id="overlay"><div class="ov-card" id="ov-card"></div></div>
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   カク算 KAKUZAN — 四則演算 × マス目パズル (KenKen / Calcudoku style)
+   Libraries from CDN: i18next (i18n) · localforage (local save) · Tone.js (sound)
+   Fallbacks are built in, so the game still works offline.
+   ===================================================================== */
+(function () {
+'use strict';
+
+/* ---------------------------------------------------------------- i18n */
+const LANGS = [
+  { code: 'ja', label: '日本語' },
+  { code: 'en', label: 'English' },
+  { code: 'zh', label: '中文' },
+  { code: 'ko', label: '한국어' },
+  { code: 'es', label: 'Español' }
+];
+
+const DICT = {
+  ja: {
+    app: { name: 'カク算', tagline: 'たす・ひく・かける・わる × マス目のパズル' },
+    menu: {
+      size: '盤面のサイズ', stage: 'ステージ', play: 'あそぶ', daily: '今日のチャレンジ',
+      continue: 'つづける', rules: 'ルール', stats: '記録', settings: '設定',
+      cleared: 'クリア済み', locked: 'まだ解放されていません', difficulty: ['やさしい', 'ふつう', 'むずかしい', 'エクストリーム'],
+      stageWord: 'ステージ', best: 'ベスト', sizeNames: ['かんたん 4×4', 'ふつう 5×5', 'こうだい 6×6'],
+      todayDone: 'やり終わり',
+      how1: '各行・各列に 1〜N を1回ずつ入れる',
+      how2: '枠の左上が計算ヒント（7+ なら合計が7）',
+      how3: 'なぞって連続入力 / ✎で候補メモ'
+    },
+    game: {
+      hints: 'ヒント', mistakes: 'まちがい', erase: 'けす', undo: 'もどす', notes: 'メモ',
+      hint: 'ヒント', check: '判定', paused: '一時停止中', best: 'ベスト',
+      kbdHint: 'PC: 1〜9 で入力 / ←↑↓→ で移動 / Backspace で削除 / N メモ / H ヒント',
+      daily: '今日のチャレンジ', random: 'ランダム'
+    },
+    win: {
+      title: 'クリア！', titleDaily: '今日の1問 クリア！', time: 'タイム', hints: 'ヒント', mistakes: 'まちがい',
+      newRecord: '新記録！', record: 'ベスト {{time}}', next: 'つぎのステージ', replay: 'もういちど',
+      menu: 'メニューへ', copy: '結果をコピー', copied: 'コピーしました',
+      shareText: 'カク算 {{level}}\n✔ {{time}} / ヒント {{hints}} / まちがい {{mistakes}}\n{{stars}}'
+    },
+    pause: {
+      title: '一時停止', resume: 'つづける', restart: 'やり直す', menu: 'メニューへ', quitAsk: 'やめますか？ 進行は自動セーブされます。'
+    },
+    rules: {
+      p1: '盤面には <b>1〜N</b> の数字を、どの行にもどの列にも1回ずつだけ入れます。',
+      p2: '枠（ケージ）の左上がヒント。<b>7+</b> なら枠内の数字の合計が7、<b>12×</b> なら積が12。',
+      p3: '<b>3-</b> は2マスの差が3、<b>2÷</b> は2マスを割った答えが2。<b>5</b> だけの数字はそのマスが5です。',
+      p4: '<b>+</b> と <b>×</b> は3マス以上の枠もあります。<b>-</b> と <b>÷</b> は2マスの枠だけ。',
+      p5: '<b>メモ</b> を ON にしてタップすると候補を小さく書けます。もう一度タップで消えます。',
+      p6: '数字ボタンを長押ししたまま滑らせると、なぞって連続入力できます。',
+      p7: '<b>ヒント</b> は1回で1マス確定します（使用数で☆評価が変わります）。<b>判定</b> は現在の盤面をチェック。',
+      p8: '進行・記録・設定はこの端末の中だけに保存されます。'
+    },
+    stats: {
+      title: '記録', total: '累計', clears: 'クリア', plays: '対局数', hintsUsed: 'ヒント使用',
+      mistakesTotal: 'まちがい', playTime: 'プレイ時間', bySize: 'サイズ別ベスト', noRecord: '記録なし',
+      dailyTitle: '今日のチャレンジ', dailyDone: '本日の記録', clearedStages: '解放済みステージ',
+      hours: '時間', minutes: '分', seconds: '秒'
+    },
+    settings: {
+      language: '言語 / Language', sound: 'サウンド', soundNote: '操作音とクリアファンファーレ',
+      autoCheck: 'リアルタイム判定', autoCheckNote: '同じ数字が重なったらすぐ赤く表示',
+      theme: 'テーマ', light: '明るい', dark: '暗い', autosave: '自動セーブ', autosaveOn: 'ON',
+      autosaveNote: 'この端末のブラウザ内に保存中（{{driver}}）',
+      reset: 'セーブデータを削除', resetNote: '記録と進行がすべて消えます', resetBtn: '削除',
+      resetConfirm: 'すべての記録と進行を削除しますか？', resetDone: '削除しました',
+      about: 'このアプリについて',
+      aboutText: 'カク算は四則演算とマス目を組み合わせたパズルです。i18next（多言語）, localforage（端末内セーブ）, Tone.js（サウンド）を CDN から読み込んでいます。ネット繋がらない時は内蔵フォールバックで動きます。'
+    },
+    msg: {
+      needDigit: 'まず数字を選んでください', conflict: '同じ行（列）に同じ数字があります',
+      allOk: 'いまのところ ぜんぶ 正しいよ', hasConflict: 'まちがいが {{n}} こ。よく見てね',
+      noHint: 'ヒントが残っていない…まずは空いているマスに挑戦！', hintUsed: '1マスを確定しました',
+      alreadyThere: 'すでに同じ数字です', solvedAlready: 'このマスは確定済みです',
+      saved: 'セーブしました', lockedStage: 'ステージ {{n}} はまだ遊べません',
+      newStage: 'ステージ {{n}} を解放！', notesOn: 'メモモード ON', notesOff: 'メモモード OFF',
+      soundOn: 'サウンド ON', soundOff: 'サウンド OFF', generating: '盤面をつくっています…',
+      restartAsk: 'このステージをやり直しますか？', filledAllBad: 'すべてのマスが埋まりました。判定してみよう！',
+      noStorage: '保存できない環境です', noStorageSettings: 'この端末（ブラウザの設定）では保存できません。遊び続けることはできますが、記録は残りません。'
+    },
+    misc: { close: 'とじる', back: 'もどる', ok: 'OK', cancel: 'やめる', yes: 'OK' }
+  },
+
+  en: {
+    app: { name: 'Kakuzan', tagline: 'Four arithmetic operations × a grid puzzle' },
+    menu: {
+      size: 'BOARD SIZE', stage: 'STAGE', play: 'PLAY', daily: 'DAILY PUZZLE',
+      continue: 'CONTINUE', rules: 'HOW TO PLAY', stats: 'RECORDS', settings: 'SETTINGS',
+      cleared: 'Cleared', locked: 'Locked', difficulty: ['Easy', 'Normal', 'Hard', 'Extreme'],
+      stageWord: 'Stage', best: 'Best', sizeNames: ['Warm-up 4×4', 'Regular 5×5', 'Grand 6×6'],
+      todayDone: 'Done today',
+      how1: 'Each row and column uses 1–N exactly once',
+      how2: 'The cage clue is arithmetic (7+ means the sum is 7)',
+      how3: 'Drag to paint digits / ✎ for pencil notes'
+    },
+    game: {
+      hints: 'Hints', mistakes: 'Misses', erase: 'Erase', undo: 'Undo', notes: 'Notes',
+      hint: 'Hint', check: 'Check', paused: 'PAUSED', best: 'Best',
+      kbdHint: 'Keyboard: 1-9 to fill · arrows to move · Backspace to erase · N notes · H hint',
+      daily: 'Daily puzzle', random: 'Random'
+    },
+    win: {
+      title: 'Solved!', titleDaily: 'Daily solved!', time: 'Time', hints: 'Hints', mistakes: 'Misses',
+      newRecord: 'NEW RECORD!', record: 'Best {{time}}', next: 'NEXT STAGE', replay: 'PLAY AGAIN',
+      menu: 'MENU', copy: 'Copy result', copied: 'Result copied',
+      shareText: 'Kakuzan {{level}}\n✔ {{time}} / {{hints}} hints / {{mistakes}} misses\n{{stars}}'
+    },
+    pause: { title: 'Paused', resume: 'Resume', restart: 'Restart', menu: 'Menu', quitAsk: 'Leave this puzzle? Progress is saved automatically.' },
+    rules: {
+      p1: 'Fill the grid with digits <b>1 to N</b> — every row and every column uses each digit exactly once.',
+      p2: 'The small clue at the top-left of each cage is your hint: <b>7+</b> means the cage adds up to 7, <b>12×</b> means it multiplies to 12.',
+      p3: '<b>3-</b> means the two cells differ by 3, <b>2÷</b> means one divided by the other equals 2. A bare <b>5</b> means that cell is 5.',
+      p4: '<b>+</b> and <b>×</b> cages can hold 3 or 4 cells. <b>-</b> and <b>÷</b> only appear in 2-cell cages.',
+      p5: 'Turn <b>Notes</b> on and tap a cell to write small candidates. Tap again to remove one.',
+      p6: 'Press and drag from a number button to paint the same digit across several cells.',
+      p7: '<b>Hint</b> fills one cell for you (using hints lowers your star rating). <b>Check</b> reviews the whole board.',
+      p8: 'Progress, records and settings are stored only on this device.'
+    },
+    stats: {
+      title: 'Records', total: 'Total', clears: 'Solved', plays: 'Puzzles', hintsUsed: 'Hints used',
+      mistakesTotal: 'Misses', playTime: 'Play time', bySize: 'Best by size', noRecord: 'No records yet',
+      dailyTitle: 'Daily puzzle', dailyDone: "Today's result", clearedStages: 'Stages unlocked',
+      hours: 'h', minutes: 'm', seconds: 's'
+    },
+    settings: {
+      language: 'Language', sound: 'Sound', soundNote: 'Tap sounds and a victory fanfare',
+      autoCheck: 'Live error check', autoCheckNote: 'Highlight clashes as you type',
+      theme: 'Theme', light: 'Light', dark: 'Dark', autosave: 'Autosave', autosaveOn: 'ON',
+      autosaveNote: 'Saved inside this browser ({{driver}})',
+      reset: 'Delete save data', resetNote: 'Erases all records and progress', resetBtn: 'Delete',
+      resetConfirm: 'Delete all records and progress?', resetDone: 'Save data deleted',
+      about: 'About',
+      aboutText: 'Kakuzan blends arithmetic with a grid puzzle. It loads i18next (i18n), localforage (local save) and Tone.js (audio) from a CDN, and falls back to built-in code when offline.'
+    },
+    msg: {
+      needDigit: 'Pick a digit first', conflict: 'Same digit already used in this row/column',
+      allOk: 'Everything looks correct so far', hasConflict: '{{n}} mistake(s) — look again',
+      noHint: 'Nothing left to hint… try an empty cell!', hintUsed: 'One cell filled in',
+      alreadyThere: 'That digit is already here', solvedAlready: 'This cell is already filled',
+      saved: 'Saved', lockedStage: 'Stage {{n}} is still locked',
+      newStage: 'Stage {{n}} unlocked!', notesOn: 'Notes mode ON', notesOff: 'Notes mode OFF',
+      soundOn: 'Sound ON', soundOff: 'Sound OFF', generating: 'Building the board…',
+      restartAsk: 'Restart this stage?', filledAllBad: 'Board is full — press Check!',
+      noStorage: 'Storage is unavailable', noStorageSettings: 'This browser will not let the game save. You can keep playing, but records will not be kept.'
+    },
+    misc: { close: 'Close', back: 'Back', ok: 'OK', cancel: 'Cancel', yes: 'OK' }
+  },
+
+  zh: {
+    app: { name: '方格算术', tagline: '加减乘除 × 方格谜题' },
+    menu: {
+      size: '棋盘大小', stage: '关卡', play: '开始游戏', daily: '每日一题',
+      continue: '继续上次', rules: '玩法', stats: '记录', settings: '设置',
+      cleared: '已通关', locked: '未解锁', difficulty: ['简单', '普通', '困难', '极限'],
+      stageWord: '关卡', best: '最佳', sizeNames: ['热身 4×4', '标准 5×5', '大型 6×6'],
+      todayDone: '今日已完成',
+      how1: '每行每列只能出现 1 到 N 一次',
+      how2: '粗框左上角是算式提示（7+ 表示和为 7）',
+      how3: '按住滑动可连续填数 / ✎ 写候选'
+    },
+    game: {
+      hints: '提示', mistakes: '失误', erase: '清除', undo: '撤销', notes: '候选',
+      hint: '提示', check: '检查', paused: '已暂停', best: '最佳',
+      kbdHint: '电脑：1-9 输入 / ←↑↓→ 移动 / Backspace 删除 / N 候选 / H 提示',
+      daily: '每日一题', random: '随机'
+    },
+    win: {
+      title: '通关！', titleDaily: '每日一题 通关！', time: '时间', hints: '提示', mistakes: '失误',
+      newRecord: '新纪录！', record: '最佳 {{time}}', next: '下一关', replay: '再来一次',
+      menu: '返回菜单', copy: '复制成绩', copied: '已复制',
+      shareText: '方格算术 {{level}}\n✔ {{time}} / 提示 {{hints}} / 失误 {{mistakes}}\n{{stars}}'
+    },
+    pause: { title: '已暂停', resume: '继续', restart: '重新开始', menu: '返回菜单', quitAsk: '要离开吗？进度会自动保存。' },
+    rules: {
+      p1: '在盘面上填入 <b>1 到 N</b>，每行每列都只能出现一次。',
+      p2: '每个粗框（笼子）左上角是提示：<b>7+</b> 表示框内数字之和为 7，<b>12×</b> 表示之积为 12。',
+      p3: '<b>3-</b> 表示两格之差为 3，<b>2÷</b> 表示两格相除等于 2。只有一个数字如 <b>5</b>，表示该格就是 5。',
+      p4: '<b>+</b> 和 <b>×</b> 的框可能有 3〜4 格，<b>-</b> 和 <b>÷</b> 只出现在 2 格框。',
+      p5: '打开 <b>候选</b> 后点击格子可写小号候选数，再点一次取消。',
+      p6: '按住数字按钮滑动，可以连续涂入同一个数字。',
+      p7: '<b>提示</b> 一次确定一格（用得越多星级越低）。<b>检查</b> 会核对整个盘面。',
+      p8: '进度、记录与设置只保存在本设备中。'
+    },
+    stats: {
+      title: '记录', total: '累计', clears: '通关', plays: '对局', hintsUsed: '使用提示',
+      mistakesTotal: '失误', playTime: '游戏时长', bySize: '各尺寸最佳', noRecord: '暂无记录',
+      dailyTitle: '每日一题', dailyDone: '今日成绩', clearedStages: '已解锁关卡',
+      hours: '小时', minutes: '分', seconds: '秒'
+    },
+    settings: {
+      language: '语言', sound: '音效', soundNote: '操作音与通关音乐',
+      autoCheck: '即时检查', autoCheckNote: '重复数字立即变红',
+      theme: '主题', light: '明亮', dark: '深色', autosave: '自动保存', autosaveOn: '开',
+      autosaveNote: '保存在本浏览器内（{{driver}}）',
+      reset: '删除存档', resetNote: '将清除全部记录与进度', resetBtn: '删除',
+      resetConfirm: '确定删除全部记录与进度吗？', resetDone: '已删除',
+      about: '关于',
+      aboutText: '方格算术把四则运算和方格谜题结合在一起。界面通过 CDN 载入 i18next（多语言）、localforage（本地存档）、Tone.js（音效），离线时使用内置备用方案。'
+    },
+    msg: {
+      needDigit: '请先选择数字', conflict: '同行（列）已有相同数字',
+      allOk: '目前全部正确', hasConflict: '有 {{n}} 处错误，再检查一下',
+      noHint: '没有可提示的格子…先试试空格吧！', hintUsed: '已确定一格',
+      alreadyThere: '这里已经是这个数字', solvedAlready: '该格已填',
+      saved: '已保存', lockedStage: '关卡 {{n}} 尚未解锁',
+      newStage: '解锁关卡 {{n}}！', notesOn: '候选模式 开', notesOff: '候选模式 关',
+      soundOn: '音效 开', soundOff: '音效 关', generating: '正在生成盘面…',
+      restartAsk: '重新开始本关吗？', filledAllBad: '已全部填满，点检查试试！',
+      noStorage: '无法保存', noStorageSettings: '此浏览器不允许保存数据。你仍可游玩，但记录不会保留。'
+    },
+    misc: { close: '关闭', back: '返回', ok: '确定', cancel: '取消', yes: '确定' }
+  },
+
+  ko: {
+    app: { name: '각산', tagline: '더하기·빼기·곱하기·나누기 × 숫자 퍼즐' },
+    menu: {
+      size: '보드 크기', stage: '스테이지', play: '시작하기', daily: '오늘의 퍼즐',
+      continue: '이어서 하기', rules: '플레이 방법', stats: '기록', settings: '설정',
+      cleared: '클리어', locked: '잠금', difficulty: ['쉬움', '보통', '어려움', '극한'],
+      stageWord: '스테이지', best: '베스트', sizeNames: ['워밍업 4×4', '표준 5×5', '대형 6×6'],
+      todayDone: '오늘 완료',
+      how1: '모든 행과 열에 1〜N을 한 번씩',
+      how2: '틀 왼쪽 위가 계산 힌트 (7+는 합이 7)',
+      how3: '긋어서 연속 입력 / ✎ 후보 메모'
+    },
+    game: {
+      hints: '힌트', mistakes: '실수', erase: '지우기', undo: '되돌리기', notes: '메모',
+      hint: '힌트', check: '판정', paused: '일시정지', best: '베스트',
+      kbdHint: 'PC: 1-9 입력 / ←↑↓→ 이동 / Backspace 삭제 / N 메모 / H 힌트',
+      daily: '오늘의 퍼즐', random: '랜덤'
+    },
+    win: {
+      title: '클리어!', titleDaily: '오늘의 퍼즐 클리어!', time: '시간', hints: '힌트', mistakes: '실수',
+      newRecord: '신기록!', record: '베스트 {{time}}', next: '다음 스테이지', replay: '한 번 더',
+      menu: '메뉴로', copy: '결과 복사', copied: '복사했습니다',
+      shareText: '각산 {{level}}\n✔ {{time}} / 힌트 {{hints}} / 실수 {{mistakes}}\n{{stars}}'
+    },
+    pause: { title: '일시정지', resume: '이어하기', restart: '다시 시작', menu: '메뉴로', quitAsk: '그만 두시나요? 진행 상황은 자동 저장됩니다.' },
+    rules: {
+      p1: '판에 <b>1부터 N</b>까지 숫자를 넣습니다. 모든 행과 열에 각 숫자는 한 번씩만.',
+      p2: '굵은 틀(케이지) 왼쪽 위가 힌트입니다. <b>7+</b>은 틀 안 숫자의 합이 7, <b>12×</b>는 곱이 12.',
+      p3: '<b>3-</b>는 두 칸의 차가 3, <b>2÷</b>는 두 칸을 나눈 값이 2. <b>5</b> 하나만 있으면 그 칸은 5.',
+      p4: '<b>+</b>와 <b>×</b>는 3〜4칸 틀도 있습니다. <b>-</b>와 <b>÷</b>는 2칸 틀에만 나와요.',
+      p5: '<b>메모</b>를 켜고 칸을 누르면 후보 숫자를 작게 적을 수 있습니다. 다시 누르면 지워져요.',
+      p6: '숫자 버튼을 누른 채로 긋으면 같은 숫자를 여러 칸에 넣을 수 있어요.',
+      p7: '<b>힌트</b>는 한 번에 한 칸을 채웁니다(많이 쓸수록 별이 줄어요). <b>판정</b>은 전체 판을 확인합니다.',
+      p8: '진행·기록·설정 이 기기 안에만 저장됩니다.'
+    },
+    stats: {
+      title: '기록', total: '누적', clears: '클리어', plays: '플레이', hintsUsed: '힌트 사용',
+      mistakesTotal: '실수', playTime: '플레이 시간', bySize: '크기별 베스트', noRecord: '기록 없음',
+      dailyTitle: '오늘의 퍼즐', dailyDone: '오늘의 기록', clearedStages: '열린 스테이지',
+      hours: '시간', minutes: '분', seconds: '초'
+    },
+    settings: {
+      language: '언어', sound: '효과음', soundNote: '버튼 소리와 클리어 팡파르',
+      autoCheck: '실시간 판정', autoCheckNote: '같은 숫자가 겹치면 바로 빨강',
+      theme: '테마', light: '밝게', dark: '어둡게', autosave: '자동 저장', autosaveOn: '켜기',
+      autosaveNote: '이 브라우저에 저장 중 ({{driver}})',
+      reset: '저장 데이터 삭제', resetNote: '기록과 진행이 모두 지워집니다', resetBtn: '삭제',
+      resetConfirm: '모든 기록과 진행을 삭제할까요?', resetDone: '삭제했습니다',
+      about: '정보',
+      aboutText: '각산은 사칙연산과 숫자판을 조합한 퍼즐입니다. CDN에서 i18next(다국어), localforage(기기 저장), Tone.js(소리)를 불러오고, 오프라인에서는 내장 대체 코드로 동작합니다.'
+    },
+    msg: {
+      needDigit: '먼저 숫자를 선택하세요', conflict: '같은 행(열)에 같은 숫자가 있어요',
+      allOk: '지금까지는 모두 맞습니다', hasConflict: '실수 {{n}}개, 다시 보세요',
+      noHint: '힌트할 칸이 없어요… 빈 칸에 도전!', hintUsed: '한 칸을 채웠습니다',
+      alreadyThere: '같은 숫자가 이미 있어요', solvedAlready: '이미 채워진 칸입니다',
+      saved: '저장했습니다', lockedStage: '스테이지 {{n}}은 아직 잠겨 있어요',
+      newStage: '스테이지 {{n}} 열림!', notesOn: '메모 모드 켜짐', notesOff: '메모 모드 꺼짐',
+      soundOn: '효과음 켜짐', soundOff: '효과음 꺼짐', generating: '판을 만들고 있어요…',
+      restartAsk: '이 스테이지를 다시 시작할까요?', filledAllBad: '모두 채웠어요. 판정해 보세요!',
+      noStorage: '저장할 수 없습니다', noStorageSettings: '이 브라우저는 저장을 허용하지 않습니다. 플레이는 가능하지만 기록은 남지 않아요.'
+    },
+    misc: { close: '닫기', back: '뒤로', ok: '확인', cancel: '취소', yes: '확인' }
+  },
+
+  es: {
+    app: { name: 'Kakuzan', tagline: 'Cuatro operaciones × puzzle de casillas' },
+    menu: {
+      size: 'TAMAÑO', stage: 'NIVEL', play: 'JUGAR', daily: 'PUZZLE DIARIO',
+      continue: 'CONTINUAR', rules: 'CÓMO SE JUEGA', stats: 'RÉCORDS', settings: 'AJUSTES',
+      cleared: 'Completado', locked: 'Bloqueado', difficulty: ['Fácil', 'Normal', 'Difícil', 'Extremo'],
+      stageWord: 'Nivel', best: 'Mejor', sizeNames: ['Calentamiento 4×4', 'Estándar 5×5', 'Grande 6×6'],
+      todayDone: 'Hecho hoy',
+      how1: 'Cada fila y columna usa 1–N una sola vez',
+      how2: 'La pista de la jaula es aritmética (7+ = suma 7)',
+      how3: 'Arrastra para pintar dígitos / ✎ para notas'
+    },
+    game: {
+      hints: 'Pistas', mistakes: 'Fallos', erase: 'Borrar', undo: 'Deshacer', notes: 'Notas',
+      hint: 'Pista', check: 'Comprobar', paused: 'PAUSA', best: 'Mejor',
+      kbdHint: 'Teclado: 1-9 rellenar · flechas mover · Backspace borrar · N notas · H pista',
+      daily: 'Puzzle diario', random: 'Aleatorio'
+    },
+    win: {
+      title: '¡Resuelto!', titleDaily: '¡Diario resuelto!', time: 'Tiempo', hints: 'Pistas', mistakes: 'Fallos',
+      newRecord: '¡RÉCORD!', record: 'Mejor {{time}}', next: 'SIGUIENTE', replay: 'OTRA VEZ',
+      menu: 'MENÚ', copy: 'Copiar resultado', copied: 'Copiado',
+      shareText: 'Kakuzan {{level}}\n✔ {{time}} / {{hints}} pistas / {{mistakes}} fallos\n{{stars}}'
+    },
+    pause: { title: 'Pausa', resume: 'Continuar', restart: 'Reiniciar', menu: 'Menú', quitAsk: '¿Salir? El progreso se guarda solo.' },
+    rules: {
+      p1: 'Rellena la rejilla con dígitos <b>1 a N</b>: cada fila y cada columna usa cada dígito una sola vez.',
+      p2: 'La pista arriba a la izquierda de cada jaula indica: <b>7+</b> suma 7, <b>12×</b> multiplica a 12.',
+      p3: '<b>3-</b> es la diferencia de dos casillas; <b>2÷</b> es su cociente. Un <b>5</b> solo significa que esa casilla es 5.',
+      p4: '<b>+</b> y <b>×</b> pueden tener 3 o 4 casillas. <b>-</b> y <b>÷</b> solo aparecen en parejas.',
+      p5: 'Activa <b>Notas</b> y toca una casilla para escribir candidatos pequeños; toca otra vez para borrarlos.',
+      p6: 'Mantén pulsado un botón numérico y arrastra para pintar el mismo dígito en varias casillas.',
+      p7: '<b>Pista</b> rellena una casilla (usar pistas baja las estrellas). <b>Comprobar</b> revisa toda la rejilla.',
+      p8: 'Progreso, récords y ajustes se guardan solo en este dispositivo.'
+    },
+    stats: {
+      title: 'Récords', total: 'Total', clears: 'Resueltos', plays: 'Partidas', hintsUsed: 'Pistas usadas',
+      mistakesTotal: 'Fallos', playTime: 'Tiempo jugado', bySize: 'Mejor por tamaño', noRecord: 'Sin récords',
+      dailyTitle: 'Puzzle diario', dailyDone: 'Hoy', clearedStages: 'Niveles abiertos',
+      hours: 'h', minutes: 'm', seconds: 's'
+    },
+    settings: {
+      language: 'Idioma', sound: 'Sonido', soundNote: 'Sonidos de toque y fanfarria',
+      autoCheck: 'Chequeo en vivo', autoCheckNote: 'Marca choques al escribir',
+      theme: 'Tema', light: 'Claro', dark: 'Oscuro', autosave: 'Autoguardado', autosaveOn: 'Sí',
+      autosaveNote: 'Guardado en este navegador ({{driver}})',
+      reset: 'Borrar datos', resetNote: 'Elimina récords y progreso', resetBtn: 'Borrar',
+      resetConfirm: '¿Borrar todos los récords y el progreso?', resetDone: 'Datos borrados',
+      about: 'Acerca de',
+      aboutText: 'Kakuzan combina aritmética y una rejilla lógica. Carga i18next, localforage y Tone.js desde CDN y usa código de reserva si no hay red.'
+    },
+    msg: {
+      needDigit: 'Elige primero un dígito', conflict: 'Ese dígito ya está en esta fila/columna',
+      allOk: 'Todo correcto por ahora', hasConflict: '{{n}} error(es), mira otra vez',
+      noHint: 'No queda nada que sugerir… ¡prueba una casilla vacía!', hintUsed: 'Una casilla resuelta',
+      alreadyThere: 'Ese dígito ya está aquí', solvedAlready: 'Esta casilla ya está rellena',
+      saved: 'Guardado', lockedStage: 'El nivel {{n}} sigue bloqueado',
+      newStage: '¡Nivel {{n}} abierto!', notesOn: 'Notas activadas', notesOff: 'Notas desactivadas',
+      soundOn: 'Sonido activado', soundOff: 'Sonido desactivado', generating: 'Creando la rejilla…',
+      restartAsk: '¿Reiniciar este nivel?', filledAllBad: '¡Rejilla llena! Pulsa Comprobar',
+      noStorage: 'Sin almacenamiento', noStorageSettings: 'Este navegador no permite guardar. Puedes seguir jugando, pero no se conservarán los récords.'
+    },
+    misc: { close: 'Cerrar', back: 'Atrás', ok: 'OK', cancel: 'Cancelar', yes: 'OK' }
+  }
+};
+
+let lang = 'ja';
+let usingI18next = false;
+
+function dictGet(l, key) {
+  return key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), DICT[l]);
+}
+function t(key, opts) {
+  if (usingI18next) {
+    const v = window.i18next.t(key, opts);
+    if (v && v !== key) return v;
+  }
+  let v = dictGet(lang, key);
+  if (v === undefined) v = dictGet('en', key);
+  if (v === undefined) return key;
+  if (typeof v === 'string' && opts) {
+    v = v.replace(/\{\{(\w+)\}\}/g, (m, k) => (opts[k] !== undefined ? String(opts[k]) : m));
+  }
+  return v;
+}
+function initI18n(l, cb) {
+  lang = l;
+  if (window.i18next && typeof window.i18next.init === 'function') {
+    const resources = {};
+    LANGS.forEach(L => { resources[L.code] = { translation: DICT[L.code] }; });
+    window.i18next.init({
+      resources, lng: l, fallbackLng: 'en',
+      interpolation: { escapeValue: false }, returnEmptyString: false
+    }, function (err) {
+      usingI18next = !err;
+      cb();
+    });
+  } else {
+    usingI18next = false;
+    cb();
+  }
+}
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = t(el.getAttribute('data-i18n'));
+    if (typeof v === 'string') el.textContent = v;
+  });
+  document.title = t('app.name') + ' KAKUZAN — ' + t('app.tagline');
+  document.getElementById('brand-name').textContent = t('app.name');
+}
+
+/* ------------------------------------------------------- local storage */
+const KEYS = {
+  settings: 'kakuzan.settings.v1',
+  progress: 'kakuzan.progress.v1',
+  lang: 'kakuzan.lang.v1',
+  gamePrefix: 'kakuzan.game.v2.'
+};
+/* One save slot per size AND per mode, so the daily puzzle can never
+   overwrite an unfinished stage game. */
+function gameKey(size, mode) {
+  return KEYS.gamePrefix + (size || G.size) + '.' + (mode || G.mode);
+}
+/* Local persistence. localforage (IndexedDB) when it really works, localStorage
+   otherwise. Every call is time-boxed so a blocked storage backend can never
+   hang startup (that happens for file:// pages in some browsers). */
+const TIMEOUT = { timeout: true };
+function withTimeout(promise, ms) {
+  return new Promise(resolve => {
+    let done = false;
+    const id = setTimeout(() => { if (!done) { done = true; resolve(TIMEOUT); } }, ms);
+    Promise.resolve(promise).then(
+      v => { if (!done) { done = true; clearTimeout(id); resolve(v); } },
+      () => { if (!done) { done = true; clearTimeout(id); resolve(TIMEOUT); } }
+    );
+  });
+}
+const Store = {
+  useLf: !!window.localforage,
+  broken: false,
+  driverName: 'localStorage',
+  async get(k) {
+    if (this.useLf) {
+      const v = await withTimeout(window.localforage.getItem(k), 1500);
+      if (v === TIMEOUT) { this.useLf = false; }
+      else { this.driverName = detectDriver(); return (v === undefined ? null : v); }
+    }
+    try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : null; }
+    catch (e) { this.broken = true; return null; }
+  },
+  async set(k, v) {
+    if (this.useLf) {
+      const r = await withTimeout(window.localforage.setItem(k, v), 1500);
+      if (r !== TIMEOUT) { this.driverName = detectDriver(); return v; }
+      this.useLf = false;
+    }
+    try { localStorage.setItem(k, JSON.stringify(v)); }
+    catch (e) { this.broken = true; }
+    return v;
+  },
+  async del(k) {
+    if (this.useLf) {
+      const r = await withTimeout(window.localforage.removeItem(k), 1500);
+      if (r !== TIMEOUT) return;
+      this.useLf = false;
+    }
+    try { localStorage.removeItem(k); } catch (e) { this.broken = true; }
+  },
+  async keys() {
+    if (this.useLf) {
+      const ks = await withTimeout(window.localforage.keys(), 1500);
+      if (ks !== TIMEOUT) return ks || [];
+      this.useLf = false;
+    }
+    try { return Object.keys(localStorage); } catch (e) { return []; }
+  },
+  /* one-shot availability probe used at startup */
+  async probe() {
+    await this.set('kakuzan.probe.v1', 1);
+    await this.del('kakuzan.probe.v1');
+    return !this.broken;
+  }
+};
+function detectDriver() {
+  let name = '';
+  try { name = (typeof window.localforage.driver === 'function') ? String(window.localforage.driver()) : ''; } catch (e) { name = ''; }
+  if (name === 'asyncStorage') return 'IndexedDB';
+  if (name === 'localStorageWrapper') return 'localStorage';
+  if (name === 'webSQLStorage') return 'WebSQL';
+  return name || 'IndexedDB';
+}
+
+/* -------------------------------------------------------------- sound */
+const Sound = {
+  enabled: true, mode: null, tone: null, ctx: null, master: null, unlocked: false,
+  init() {
+    if (window.Tone && window.Tone.Synth) {
+      this.mode = 'tone';
+    } else if (window.AudioContext || window.webkitAudioContext) {
+      this.mode = 'wa';
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.16;
+        this.master.connect(this.ctx.destination);
+      } catch (e) { this.mode = null; }
+    }
+  },
+  async unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    try {
+      if (this.mode === 'tone') {
+        if (window.Tone.start) await window.Tone.start();
+        if (!this.tone) {
+          const synth = new window.Tone.PolySynth(window.Tone.Synth, {
+            oscillator: { type: 'triangle8' },
+            envelope: { attack: 0.004, decay: 0.16, sustain: 0.02, release: 0.12 }
+          }).toDestination();
+          synth.volume.value = -13;
+          this.tone = synth;
+        }
+        window.Tone.getDestination ? (window.Tone.getDestination().volume.value = -6) : (window.Tone.Destination.volume.value = -6);
+      } else if (this.mode === 'wa' && this.ctx && this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+      }
+    } catch (e) { /* ignore */ }
+  },
+  tone1(freq, when, dur, vel) {
+    if (this.mode === 'tone' && this.tone) {
+      try {
+        const w = window.Tone.now() + (when || 0);
+        this.tone.triggerAttackRelease(window.Tone.Frequency(freq, 'hz').toNote(), dur || '16n', w, vel == null ? 0.9 : vel);
+      } catch (e) { /* ignore */ }
+    } else if (this.mode === 'wa' && this.ctx) {
+      try {
+        const t0 = this.ctx.currentTime + (when || 0);
+        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(freq, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.5 * (vel == null ? 0.9 : vel), t0 + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.12));
+        o.connect(g); g.connect(this.master);
+        o.start(t0); o.stop(t0 + (dur || 0.12) + 0.02);
+      } catch (e) { /* ignore */ }
+    }
+  },
+  seq(notes, step, dur, vel) {
+    if (!this.enabled || !this.mode) return;
+    notes.forEach((f, i) => { if (f) this.tone1(f, i * (step || 0.09), dur || 0.14, vel == null ? 0.95 : vel); });
+  },
+  play(name) {
+    if (!this.enabled || !this.mode) return;
+    switch (name) {
+      case 'tap': this.seq([620], 0.06, 0.07, 0.55); break;
+      case 'select': this.seq([760], 0.06, 0.06, 0.45); break;
+      case 'place': this.seq([523, 784], 0.055, 0.1, 0.85); break;
+      case 'erase': this.seq([300], 0.06, 0.1, 0.6); break;
+      case 'error': this.seq([220, 165], 0.075, 0.16, 0.8); break;
+      case 'notes': this.seq([980], 0.05, 0.05, 0.4); break;
+      case 'good': this.seq([659, 880], 0.07, 0.12, 0.7); break;
+      case 'hint': this.seq([880, 1108, 1318], 0.075, 0.14, 0.8); break;
+      case 'win': this.seq([523, 659, 784, 1046, 1318], 0.115, 0.3, 1); break;
+      case 'click': this.seq([440], 0.05, 0.05, 0.4); break;
+    }
+  }
+};
+
+/* =========================================================================
+   CORE — generator & solver  (pure functions, marked for offline testing)
+   ========================================================================= */
+/*<core>*/
+function fnv1a(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffleArr(a, rnd) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+const POP = new Uint8Array(1 << 10);
+for (let i = 0; i < POP.length; i++) POP[i] = POP[i >> 1] + (i & 1);
+
+/* Latin square of order n filled with 1..n */
+function makeLatin(n, rnd) {
+  const idx = [];
+  for (let i = 0; i < n; i++) idx.push(i);
+  const rowShift = shuffleArr(idx.slice(), rnd);
+  const permA = shuffleArr(idx.slice(), rnd);
+  const permB = shuffleArr(idx.slice(), rnd);
+  const digits = shuffleArr(idx.slice(), rnd);
+  const g = [];
+  for (let r = 0; r < n; r++) {
+    const row = new Uint8Array(n);
+    for (let c = 0; c < n; c++) row[c] = digits[permA[(rowShift[r] + permB[c]) % n]] + 1;
+    g.push(row);
+  }
+  return g;
+}
+
+function cageOk(op, target, vals, len) {
+  const k = (len === undefined) ? vals.length : len;
+  switch (op) {
+    case '=': return vals[0] === target;
+    case '+': { let s = 0; for (let i = 0; i < k; i++) s += vals[i]; return s === target; }
+    case '×': { let p = 1; for (let i = 0; i < k; i++) p *= vals[i]; return p === target; }
+    case '-': return Math.abs(vals[0] - vals[1]) === target;
+    case '÷': {
+      const a = vals[0], b = vals[1];
+      if (a % b === 0 && a / b === target) return true;
+      if (b % a === 0 && b / a === target) return true;
+      return false;
+    }
+  }
+  return false;
+}
+
+/* Partition the n*n grid into cages of 1..maxSize connected cells */
+function partitionCages(n, rnd, weights) {
+  const id = new Int16Array(n * n).fill(-1);
+  const cages = [];
+  let assigned = 0, cid = 0;
+  const nb = [
+    [-1, 0], [1, 0], [0, -1], [0, 1]
+  ];
+  let guard = 0;
+  while (assigned < n * n && guard++ < 500) {
+    const free = [];
+    for (let i = 0; i < n * n; i++) if (id[i] === -1) free.push(i);
+    if (!free.length) break;
+    const seed = free[Math.floor(rnd() * free.length)];
+    const r0 = Math.floor(seed / n), c0 = seed % n;
+    let k = weights.length - 1, acc = 0;
+    const roll = rnd();
+    for (let i = 0; i < weights.length; i++) { acc += weights[i]; if (roll < acc) { k = i + 1; break; } }
+    if (k < 1) k = 1;
+    const cells = [seed];
+    id[seed] = cid; assigned++;
+    while (cells.length < k) {
+      const opts = [];
+      for (const ci of cells) {
+        const r = Math.floor(ci / n), c = ci % n;
+        for (const d of nb) {
+          const nr = r + d[0], nc = c + d[1];
+          if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+          const ni = nr * n + nc;
+          if (id[ni] === -1) opts.push(ni);
+        }
+      }
+      if (!opts.length) break;
+      const pick = opts[Math.floor(rnd() * opts.length)];
+      id[pick] = cid; cells.push(pick); assigned++;
+    }
+    cages.push({ cells: cells, id: cid });
+    cid++;
+  }
+  return { id: id, cages: cages };
+}
+
+/* Build clues (op + target) from a solution grid */
+function makeClues(n, cages, latin, rnd) {
+  const out = [];
+  for (const cage of cages) {
+    const vals = cage.cells.map(i => latin[Math.floor(i / n)][i % n]);
+    const k = vals.length;
+    let op, target;
+    if (k === 1) { op = '='; target = vals[0]; }
+    else if (k === 2) {
+      const a = vals[0], b = vals[1];
+      const opts = ['+', '×'];
+      if (a !== b) opts.push('-');
+      const hi = Math.max(a, b), lo = Math.min(a, b);
+      if (hi !== lo && hi % lo === 0) opts.push('÷');
+      op = opts[Math.floor(rnd() * opts.length)];
+      if (op === '+') target = a + b;
+      else if (op === '×') target = a * b;
+      else if (op === '-') target = Math.abs(a - b);
+      else target = hi / lo;
+    } else {
+      op = rnd() < 0.5 ? '+' : '×';
+      if (op === '+') { target = vals.reduce((s, v) => s + v, 0); }
+      else { target = vals.reduce((s, v) => s * v, 1); }
+    }
+    out.push({ cells: cage.cells.slice().sort((a, b) => a - b), op: op, target: target });
+  }
+  return out;
+}
+
+/* Count solutions (up to `limit`). Returns {count, capped} */
+function countSolutions(n, clues, limit, nodeCap) {
+  limit = limit || 2;
+  nodeCap = nodeCap || 60000;
+  const full = ((1 << (n + 1)) - 2);
+  const units = [];
+  for (let r = 0; r < n; r++) { const u = []; for (let c = 0; c < n; c++) u.push(r * n + c); units.push(u); }
+  for (let c = 0; c < n; c++) { const u = []; for (let r = 0; r < n; r++) u.push(r * n + c); units.push(u); }
+
+  let nodes = 0, solutions = 0, capped = false;
+  const scratch = new Array(4).fill(0);
+
+  function enumerate(cl, dom, allowed) {
+    const cells = cl.cells, k = cells.length;
+    const lists = [];
+    for (let i = 0; i < k; i++) {
+      const arr = [];
+      const d = dom[cells[i]];
+      for (let v = 1; v <= n; v++) if (d & (1 << v)) arr.push(v);
+      if (!arr.length) return false;
+      lists.push(arr);
+    }
+    let any = false;
+    const idx = new Array(k).fill(0);
+    const rec = (p) => {
+      if (p === k) {
+        for (let i = 0; i < k; i++) scratch[i] = lists[i][idx[i]];
+        if (cageOk(cl.op, cl.target, scratch, k)) {
+          for (let i = 0; i < k; i++) allowed[i] |= (1 << scratch[i]);
+          any = true;
+        }
+        return;
+      }
+      const arr = lists[p];
+      for (let j = 0; j < arr.length; j++) { idx[p] = j; rec(p + 1); }
+    };
+    rec(0);
+    return any;
+  }
+
+  function propagate(dom) {
+    let changed = true, guard = 0;
+    while (changed) {
+      /* Safety valve: stop propagating (never declare a contradiction here,
+         otherwise valid solutions could be pruned away). */
+      if (++guard > 200) break;
+      changed = false;
+      for (let u = 0; u < units.length; u++) {
+        const unit = units[u];
+        for (let v = 1; v <= n; v++) {
+          const bit = 1 << v;
+          let cnt = 0, last = -1;
+          for (let i = 0; i < n; i++) { const ci = unit[i]; if (dom[ci] & bit) { cnt++; last = ci; if (cnt > 1) break; } }
+          if (cnt === 0) return false;
+          if (cnt === 1 && POP[dom[last]] > 1) { dom[last] = bit; changed = true; }
+        }
+        for (let i = 0; i < n; i++) {
+          const ci = unit[i], d = dom[ci];
+          if (POP[d] === 1) {
+            for (let j = 0; j < n; j++) {
+              if (j === i) continue;
+              const cj = unit[j];
+              if (dom[cj] & d) { dom[cj] &= ~d; changed = true; if (!dom[cj]) return false; }
+            }
+          }
+        }
+      }
+      for (let ci = 0; ci < clues.length; ci++) {
+        const cl = clues[ci], cells = cl.cells, k = cells.length;
+        if (k === 1) {
+          const bit = 1 << cl.target;
+          if (!(dom[cells[0]] & bit)) return false;
+          if (dom[cells[0]] !== bit) { dom[cells[0]] = bit; changed = true; }
+          continue;
+        }
+        let allSingle = true;
+        for (let i = 0; i < k; i++) if (POP[dom[cells[i]]] > 1) { allSingle = false; break; }
+        if (allSingle) {
+          const arr = [];
+          for (let i = 0; i < k; i++) arr.push(POP2V(dom[cells[i]]));
+          if (!cageOk(cl.op, cl.target, arr)) return false;
+          continue;
+        }
+        const allowed = new Uint16Array(k);
+        if (!enumerate(cl, dom, allowed)) return false;
+        for (let i = 0; i < k; i++) {
+          const nd = dom[cells[i]] & allowed[i];
+          if (!nd) return false;
+          if (nd !== dom[cells[i]]) { dom[cells[i]] = nd; changed = true; }
+        }
+      }
+    }
+    return true;
+  }
+
+  function search(dom) {
+    if (capped || solutions >= limit) return;
+    if (!propagate(dom)) return;
+    let bestCell = -1, bestCnt = 99;
+    for (let i = 0; i < n * n; i++) {
+      const c = POP[dom[i]];
+      if (c === 0) return;
+      if (c > 1 && c < bestCnt) { bestCnt = c; bestCell = i; }
+    }
+    if (bestCell === -1) { solutions++; return; }
+    if (++nodes > nodeCap) { capped = true; return; }
+    const d = dom[bestCell];
+    for (let v = 1; v <= n; v++) {
+      const bit = 1 << v;
+      if (!(d & bit)) continue;
+      const nd = dom.slice();
+      nd[bestCell] = bit;
+      search(nd);
+      if (solutions >= limit || capped) return;
+    }
+  }
+
+  const dom0 = new Uint16Array(n * n).fill(full);
+  search(dom0);
+  return { count: solutions, capped: capped };
+}
+function POP2V(mask) { for (let v = 1; v <= 10; v++) if (mask === (1 << v)) return v; return 0; }
+
+/* Difficulty weights for cage sizes */
+function weightsFor(size, stage) {
+  const ramp = Math.min(1, Math.max(0, (stage - 1) / 11));
+  let w;
+  if (size === 4) w = [0.16, 0.52, 0.32, 0];
+  else if (size === 5) w = [0.12, 0.44, 0.38, 0.06];
+  else w = [0.08, 0.36, 0.42, 0.14];
+  w = w.slice();
+  w[0] = w[0] * (1 - 0.75 * ramp);
+  w[1] = w[1] * (1 - 0.25 * ramp);
+  w[2] = w[2] + w[0] * 0.75 * ramp + 0.06 * ramp;
+  w[3] = w[3] + 0.10 * ramp;
+  const s = w[0] + w[1] + w[2] + w[3];
+  return w.map(x => x / s);
+}
+
+/* Generate a puzzle with a guaranteed (attempted) unique solution */
+function generatePuzzle(size, seedStr, opts) {
+  opts = opts || {};
+  const maxMs = opts.maxMs || 3000;
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const rnd0 = mulberry32(fnv1a(seedStr));
+  const latin = makeLatin(size, rnd0);
+  const n = size;
+  let best = null;
+  let attempt = 0, tries = 0;
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  while (tries++ < 200) {
+    if (nowMs() - t0 > maxMs) break;
+    const rnd = mulberry32((fnv1a(seedStr) ^ Math.imul(attempt + 1, 2654435761)) >>> 0);
+    let w = weightsFor(n, opts.stage || 1).slice();
+    if (attempt > 25) { w[0] += 0.10; }
+    if (attempt > 70) { w[0] += 0.18; }
+    const s = w.reduce((a, b) => a + b, 0);
+    w = w.map(x => x / s);
+    const part = partitionCages(n, rnd, w);
+    const clues = makeClues(n, part.cages, latin, rnd);
+    attempt++;
+    const res = countSolutions(n, clues, 2, 20000);
+    if (res.capped) continue;
+    if (!best) best = { clues: clues, latin: latin, count: res.count };
+    if (res.count === 1) {
+      return { clues: clues, latin: latin, seed: seedStr, size: n, attempts: attempt };
+    }
+  }
+  if (best) return { clues: best.clues, latin: best.latin, seed: seedStr, size: n, attempts: attempt + 1, weak: true };
+  /* absolute fallback: every cell is its own '=' cage (trivially unique) */
+  const clues = [];
+  for (let i = 0; i < n * n; i++) clues.push({ cells: [i], op: '=', target: latin[Math.floor(i / n)][i % n] });
+  return { clues: clues, latin: latin, seed: seedStr, size: n, attempts: attempt + 1, weak: true };
+}
+
+/* Greedy 6-colouring so neighbouring cages never share a tint */
+function colorCages(n, clues) {
+  const adj = clues.map(() => []);
+  const cageAt = new Int16Array(n * n).fill(-1);
+  clues.forEach((cl, k) => cl.cells.forEach(i => { cageAt[i] = k; }));
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const me = cageAt[r * n + c];
+    if (c + 1 < n) { const o = cageAt[r * n + c + 1]; if (o !== me) { adj[me].push(o); adj[o].push(me); } }
+    if (r + 1 < n) { const o = cageAt[(r + 1) * n + c]; if (o !== me) { adj[me].push(o); adj[o].push(me); } }
+  }
+  const color = new Int8Array(clues.length).fill(-1);
+  for (let k = 0; k < clues.length; k++) {
+    const used = new Set(adj[k].filter(j => color[j] >= 0).map(j => color[j]));
+    let cc = 0;
+    while (used.has(cc) && cc < 6) cc++;
+    color[k] = cc % 6;
+  }
+  return color;
+}
+
+/* Validate a board against the clues */
+function evaluateBoard(n, clues, cells) {
+  const conflict = new Uint8Array(n * n);
+  for (let u = 0; u < 2 * n; u++) {
+    const seen = {};
+    for (let k = 0; k < n; k++) {
+      const i = (u < n) ? (u * n + k) : (k * n + (u - n));
+      const v = cells[i];
+      if (!v) continue;
+      if (seen[v] !== undefined) { conflict[i] = 1; conflict[seen[v]] = 1; }
+      else seen[v] = i;
+    }
+  }
+  const cageState = [];
+  let filled = 0, badCages = 0;
+  for (let c = 0; c < clues.length; c++) {
+    const cl = clues[c];
+    const vals = cl.cells.map(i => cells[i]);
+    vals.forEach(v => { if (v) filled++; });
+    if (vals.every(v => v > 0)) {
+      if (cageOk(cl.op, cl.target, vals)) cageState[c] = 'ok';
+      else { cageState[c] = 'bad'; badCages++; }
+    } else cageState[c] = '';
+  }
+  let dup = 0;
+  for (let i = 0; i < n * n; i++) if (conflict[i] && cells[i]) dup++;
+  return {
+    conflict: conflict, cageState: cageState, filled: filled,
+    badCages: badCages, dup: dup,
+    solved: filled === n * n && dup === 0 && badCages === 0
+  };
+}
+/*</core>*/
+
+/* =====================================================================
+   GAME STATE
+   ===================================================================== */
+const settings = { lang: null, sound: true, theme: 'light', autoCheck: true };
+const progress = {
+  unlocked: { 4: 1, 5: 1, 6: 1 },
+  records: {},
+  stats: { clears: 0, plays: 0, hints: 0, mistakes: 0, time: 0, bySize: { 4: 0, 5: 0, 6: 0 } }
+};
+const G = {
+  size: 4, stage: 1, mode: 'stage', seed: '', date: '',
+  clues: [], latin: [], color: [], n: 4,
+  cells: [], notes: [], undo: [], sel: -1, digit: 0, notesMode: false,
+  hints: 0, mistakes: 0, elapsed: 0, paused: false, done: false, started: 0,
+  cageAt: null
+};
+let saveTimer = 0, tickTimer = 0;
+
+const $ = id => document.getElementById(id);
+
+/* --------------------------------------------------------- formatting */
+function fmtTime(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const p = x => String(x).padStart(2, '0');
+  return h ? h + ':' + p(m) + ':' + p(s) : p(m) + ':' + p(s);
+}
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function recordKey() {
+  return G.mode === 'daily' ? ('d:' + G.date + ':' + G.size)
+    : G.mode === 'random' ? ('r:' + G.seed)
+      : ('s:' + G.size + ':' + G.stage);
+}
+function levelLabel() {
+  const sizeTxt = G.size + '×' + G.size;
+  if (G.mode === 'daily') return sizeTxt + ' · ' + t('game.daily');
+  if (G.mode === 'random') return sizeTxt + ' · ' + t('game.random');
+  return sizeTxt + ' · ' + t('menu.stageWord') + ' ' + G.stage + ' ' + starBar(diffLevel(G.size, G.stage));
+}
+
+/* -------------------------------------------------------- persistence */
+async function loadAll() {
+  const s = await Store.get(KEYS.settings);
+  if (s && typeof s === 'object') Object.assign(settings, s);
+  const p = await Store.get(KEYS.progress);
+  if (p && typeof p === 'object') {
+    Object.assign(progress.unlocked, p.unlocked || {});
+    progress.records = p.records || {};
+    if (p.stats) {
+      Object.assign(progress.stats, p.stats);
+      Object.assign(progress.stats.bySize, (p.stats && p.stats.bySize) || {});
+    }
+  }
+  const savedLang = await Store.get(KEYS.lang);
+  settings.lang = settings.lang || savedLang || null;
+}
+async function saveSettings() {
+  await Store.set(KEYS.settings, settings);
+  await Store.set(KEYS.lang, settings.lang);
+}
+async function saveProgress() { await Store.set(KEYS.progress, progress); }
+function serializeGame() {
+  return {
+    size: G.size, stage: G.stage, mode: G.mode, seed: G.seed, date: G.date,
+    clues: G.clues.map(c => ({ c: c.cells, o: c.op, t: c.target })),
+    latin: G.latin.slice(),
+    cells: G.cells.slice(), notes: G.notes.slice(),
+    hints: G.hints, mistakes: G.mistakes, elapsed: Math.floor(G.elapsed),
+    done: G.done, notesMode: G.notesMode, at: Date.now()
+  };
+}
+function queueSaveGame() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(async () => {
+    saveTimer = 0;
+    if (!G.clues.length) return;
+    try { await Store.set(gameKey(), serializeGame()); } catch (e) { /* ignore */ }
+  }, 450);
+}
+function applyLoaded(g) {
+  G.size = g.size; G.stage = g.stage; G.mode = g.mode; G.seed = g.seed; G.date = g.date || '';
+  G.n = g.size;
+  G.clues = g.clues.map(c => ({ cells: c.c, op: c.o, target: c.t }));
+  G.latin = g.latin;
+  G.cells = g.cells; G.notes = g.notes;
+  G.hints = g.hints || 0; G.mistakes = g.mistakes || 0;
+  G.elapsed = g.elapsed || 0; G.done = !!g.done; G.notesMode = !!g.notesMode;
+  G.undo = []; G.sel = -1; G.digit = 0; G.paused = false;
+  G.color = colorCages(G.n, G.clues);
+  cageAt();
+}
+async function listSavedGames() {
+  const out = [];
+  const ks = await Store.keys();
+  for (const k of (ks || [])) {
+    if (String(k).indexOf(KEYS.gamePrefix) !== 0) continue;
+    const g = await Store.get(k);
+    if (g && g.clues && g.clues.length && !g.done) out.push(g);
+  }
+  out.sort((a, b) => (b.at || 0) - (a.at || 0));
+  return out;
+}
+async function anySavedGame() {
+  const list = await listSavedGames();
+  return list.length ? list[0] : null;
+}
+
+function cageAt() {
+  const arr = new Int16Array(G.n * G.n).fill(-1);
+  G.clues.forEach((cl, k) => cl.cells.forEach(i => { arr[i] = k; }));
+  G.cageAt = arr;
+}
+
+/* =====================================================================
+   SCREENS
+   ===================================================================== */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + id));
+  if (id !== 'game') stopTick();
+  window.scrollTo(0, 0);
+}
+
+/* ------------------------------------------------------------- menu */
+async function renderMenu() {
+  const chips = $('size-chips');
+  chips.innerHTML = '';
+  [4, 5, 6].forEach(sz => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (sz === G.size ? ' sel' : '');
+    const recs = bestOfSize(sz);
+    b.innerHTML = sz + '×' + sz + '<small>' + (recs ? '★ ' + fmtTime(recs) : t('menu.sizeNames.' + (sz - 4))) + '</small>';
+    b.onclick = () => { Sound.play('click'); G.size = sz; renderMenu(); };
+    chips.appendChild(b);
+  });
+  const unlocked = progress.unlocked[G.size] || 1;
+  G.stage = Math.min(Math.max(1, G.stage), unlocked);
+  $('stage-label').textContent = t('menu.stageWord') + ' ' + G.stage;
+  $('stage-diff').textContent = diffLabel(G.size, G.stage);
+  const dots = $('stage-dots');
+  dots.innerHTML = '';
+  for (let i = 1; i <= Math.max(12, unlocked); i++) {
+    if (i > 24) break;
+    const d = document.createElement('i');
+    if ((progress.records['s:' + G.size + ':' + i])) d.className = 'done';
+    if (i === G.stage) d.className = (d.className ? d.className + ' ' : '') + 'cur';
+    if (i > unlocked) d.style.opacity = '.35';
+    dots.appendChild(d);
+  }
+  const saved = await anySavedGame();
+  $('btn-continue').hidden = !saved;
+  if (saved) {
+    $('continue-sub').textContent = saved.size + '×' + saved.size + ' · ' + fmtTime(saved.elapsed) +
+      (saved.mode === 'daily' ? (' · ' + t('game.daily')) : (saved.mode === 'random' ? (' · ' + t('game.random')) : (' · ' + t('menu.stageWord') + ' ' + saved.stage)));
+  }
+  const dailyKey = 'd:' + todayStr();
+  const dailyDone = [4, 5, 6].some(s => progress.records[dailyKey + ':' + s]);
+  const badge = $('daily-badge');
+  badge.hidden = !dailyDone;
+  badge.textContent = t('menu.todayDone');
+  /* first-run tips; they step aside once the player has cleared something */
+  const howto = $('howto-card');
+  if (howto) {
+    howto.hidden = (progress.stats.clears || 0) > 0;
+    howto.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+  }
+  $('lib-note').innerHTML = 'i18next · localforage · Tone.js<br>' + (usingI18next ? 'CDN ✓' : 'offline mode');
+}
+function bestOfSize(sz) {
+  let best = 0;
+  Object.keys(progress.records).forEach(k => {
+    const isStage = k.indexOf('s:' + sz + ':') === 0;
+    const isDaily = k.indexOf('d:') === 0 && k.slice(-String(sz).length - 1) === ':' + sz;
+    if (isStage || isDaily) {
+      const r = progress.records[k];
+      if (r && (!best || r.time < best)) best = r.time;
+    }
+  });
+  return best;
+}
+
+/* Difficulty is measured from the puzzle that will actually be played
+   (many single-cell anchors = easier, big cages and ÷/- = harder). */
+const DIFF_THRESH = { 4: [0.18, 0.32, 0.48], 5: [0.28, 0.40, 0.50], 6: [0.38, 0.50, 0.58] };
+const diffCache = new Map();
+function scoreClues(size, clues) {
+  let s = 0;
+  for (const c of clues) {
+    const k = c.cells.length;
+    if (k === 1) s -= 1.2;
+    else if (k === 2) s += (c.op === '-' || c.op === '÷') ? 1.1 : 0.6;
+    else if (k === 3) s += (c.op === '+' ? 2.2 : 2.6);
+    else s += 3.4;
+  }
+  return s / (size * size);
+}
+function diffLevel(sz, stage) {
+  const key = sz + ':' + stage;
+  let p = diffCache.get(key);
+  if (p === undefined) {
+    p = 0.4;
+    try {
+      const g = generatePuzzle(sz, seedFor('stage', sz, stage), { stage: stage, maxMs: 2500 });
+      p = scoreClues(sz, g.clues);
+    } catch (e) { /* keep the neutral default */ }
+    diffCache.set(key, p);
+  }
+  const th = DIFF_THRESH[sz] || [0.2, 0.35, 0.5];
+  return p < th[0] ? 0 : p < th[1] ? 1 : p < th[2] ? 2 : 3;
+}
+function starBar(level) {
+  let s = '';
+  for (let i = 0; i < 4; i++) s += i <= level ? '★' : '☆';
+  return s;
+}
+function diffLabel(sz, stage) {
+  const lvl = diffLevel(sz, stage);
+  return starBar(lvl) + ' ' + DICT[lang].menu.difficulty[lvl];
+}
+
+/* -------------------------------------------------------------- board */
+function buildBoard() {
+  const board = $('board');
+  board.style.setProperty('--n', G.n);
+  $('pad').style.setProperty('--n', G.n);
+  board.innerHTML = '';
+  for (let i = 0; i < G.n * G.n; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.dataset.i = i;
+    const r = Math.floor(i / G.n), cc = i % G.n;
+    const me = G.cageAt[i];
+    const up = r > 0 ? G.cageAt[i - G.n] : -2;
+    const lf = cc > 0 ? G.cageAt[i - 1] : -2;
+    const dn = r < G.n - 1 ? G.cageAt[i + G.n] : -2;
+    const rt = cc < G.n - 1 ? G.cageAt[i + 1] : -2;
+    c.style.setProperty('--bt', '0px');
+    c.style.setProperty('--bl', '0px');
+    c.style.setProperty('--br', (rt === -2) ? '0px' : (rt !== me ? '3px' : '1px'));
+    c.style.setProperty('--bb', (dn === -2) ? '0px' : (dn !== me ? '3px' : '1px'));
+    c.classList.add('cg' + G.color[me]);
+    const k = G.cageAt[i];
+    const first = G.clues[k].cells.indexOf(i) === 0;
+    if (first) {
+      const clue = document.createElement('span');
+      clue.className = 'clue';
+      clue.textContent = G.clues[k].op === '=' ? String(G.clues[k].target) : (G.clues[k].target + G.clues[k].op);
+      c.appendChild(clue);
+    }
+    const dig = document.createElement('span');
+    dig.className = 'digit';
+    c.appendChild(dig);
+    const nt = document.createElement('span');
+    nt.className = 'notes';
+    for (let v = 1; v <= G.n; v++) { const s = document.createElement('i'); s.textContent = v; nt.appendChild(s); }
+    c.appendChild(nt);
+    board.appendChild(c);
+  }
+  refreshBoard();
+}
+function buildPad() {
+  const pad = $('pad');
+  pad.innerHTML = '';
+  for (let v = 1; v <= G.n; v++) {
+    const b = document.createElement('button');
+    b.dataset.v = v;
+    b.innerHTML = v + '<i>' + G.n + '</i>';
+    b.addEventListener('pointerdown', e => { e.preventDefault(); pickDigit(v); });
+    pad.appendChild(b);
+  }
+  refreshPad();
+}
+function refreshPad() {
+  const counts = new Array(G.n + 1).fill(0);
+  for (let i = 0; i < G.cells.length; i++) if (G.cells[i]) counts[G.cells[i]]++;
+  $('pad').querySelectorAll('button').forEach(b => {
+    const v = +b.dataset.v;
+    b.querySelector('i').textContent = Math.max(0, G.n - counts[v]);
+    b.classList.toggle('active', G.digit === v && !G.notesMode);
+    b.classList.toggle('spent', counts[v] >= G.n);
+  });
+  $('t-notes').classList.toggle('on', G.notesMode);
+}
+function refreshBoard() {
+  const ev = evaluateBoard(G.n, G.clues, G.cells);
+  const cells = $('board').children;
+  const selCage = G.sel >= 0 ? G.cageAt[G.sel] : -1;
+  const selRow = G.sel >= 0 ? Math.floor(G.sel / G.n) : -1;
+  const selCol = G.sel >= 0 ? G.sel % G.n : -1;
+  for (let i = 0; i < cells.length; i++) {
+    const el = cells[i];
+    const r = Math.floor(i / G.n), c = i % G.n;
+    el.classList.toggle('sel', i === G.sel);
+    el.classList.toggle('peer', G.sel >= 0 && i !== G.sel && (r === selRow || c === selCol || G.cageAt[i] === selCage));
+    el.classList.toggle('ok', ev.cageState[G.cageAt[i]] === 'ok');
+    const v = G.cells[i];
+    const dg = el.querySelector('.digit');
+    dg.textContent = v || '';
+    dg.classList.toggle('conflict', !!(ev.conflict[i] && v));
+    const mask = G.notes[i] || 0;
+    const ns = el.querySelectorAll('.notes i');
+    for (let k = 0; k < ns.length; k++) ns[k].classList.toggle('on', !!(mask & (1 << (k + 1))) && !v);
+  }
+  $('s-hints').textContent = G.hints;
+  $('s-mistakes').textContent = G.mistakes;
+  $('s-fill').textContent = ev.filled + '/' + (G.n * G.n);
+  $('s-bar').style.width = Math.round(100 * ev.filled / (G.n * G.n)) + '%';
+  const best = progress.records[recordKey()];
+  $('g-best').textContent = t('game.best') + ' ' + (best ? fmtTime(best.time) : '--:--');
+  return ev;
+}
+
+/* ------------------------------------------------------------ actions */
+function pickDigit(v) {
+  if (G.done) return;
+  Sound.unlock();
+  if (G.notesMode) { toggleNoteCell(v); return; }
+  G.digit = (G.digit === v) ? 0 : v;
+  Sound.play('tap');
+  if (G.digit && G.sel >= 0) fillCell(G.sel);
+  refreshPad();
+}
+function selectCell(i) {
+  if (G.done || G.paused) return;
+  if (G.sel !== i) Sound.play('select');
+  G.sel = i;
+  if (G.digit && !G.notesMode) fillCell(i);
+  refreshBoard();
+}
+function pushUndo(i) {
+  G.undo.push({ i: i, v: G.cells[i], n: G.notes[i] || 0 });
+  if (G.undo.length > 240) G.undo.shift();
+}
+function fillCell(i) {
+  if (!G.digit) { toast(t('msg.needDigit')); return; }
+  if (G.cells[i] === G.digit) return;
+  pushUndo(i);
+  G.cells[i] = G.digit;
+  G.notes[i] = 0;
+  const clash = rowColClash(i);
+  if (clash) {
+    G.mistakes++;
+    progress.stats.mistakes++;
+    saveProgress();
+    Sound.play('error');
+    if (settings.autoCheck) {
+      $('board').classList.add('shake');
+      setTimeout(() => $('board').classList.remove('shake'), 400);
+      toast(t('msg.conflict'));
+    }
+  } else {
+    Sound.play('place');
+    clearPeerNotes(i);
+  }
+  refreshPad();
+  const ev = refreshBoard();
+  queueSaveGame();
+  if (ev.solved) onWin();
+}
+function rowColClash(i) {
+  const v = G.cells[i];
+  if (!v) return false;
+  const r = Math.floor(i / G.n), c = i % G.n;
+  for (let k = 0; k < G.n; k++) {
+    if (k !== c && G.cells[r * G.n + k] === v) return true;
+    if (k !== r && G.cells[k * G.n + c] === v) return true;
+  }
+  return false;
+}
+function clearPeerNotes(i) {
+  const v = G.cells[i], r = Math.floor(i / G.n), c = i % G.n;
+  const kill = j => { if (G.notes[j] & (1 << v)) G.notes[j] &= ~(1 << v); };
+  for (let k = 0; k < G.n; k++) { kill(r * G.n + k); kill(k * G.n + c); }
+  kill(i);
+}
+function toggleNoteCell(v) {
+  if (G.sel < 0) { toast(t('msg.needDigit')); return; }
+  if (G.cells[G.sel]) { Sound.play('error'); toast(t('msg.solvedAlready')); return; }
+  const before = G.notes[G.sel] || 0;
+  G.notes[G.sel] = before ^ (1 << v);
+  Sound.play('notes');
+  refreshBoard();
+  queueSaveGame();
+}
+function eraseCell(i) {
+  if (G.done || i < 0) return;
+  if (!G.cells[i] && !(G.notes[i] || 0)) return;
+  pushUndo(i);
+  G.cells[i] = 0; G.notes[i] = 0;
+  Sound.play('erase');
+  refreshPad(); refreshBoard();
+  queueSaveGame();
+}
+function undoOnce() {
+  const u = G.undo.pop();
+  if (!u) return;
+  G.cells[u.i] = u.v; G.notes[u.i] = u.n;
+  Sound.play('erase');
+  refreshPad(); refreshBoard();
+  queueSaveGame();
+}
+function useHint() {
+  if (G.done) return;
+  let target = (G.sel >= 0 && G.cells[G.sel] !== G.latin[Math.floor(G.sel / G.n)][G.sel % G.n]) ? G.sel : -1;
+  const empties = [];
+  for (let i = 0; i < G.cells.length; i++) if (!G.cells[i]) empties.push(i);
+  if (target < 0) {
+    const sameDigit = empties.filter(i => G.digit && G.latin[Math.floor(i / G.n)][i % G.n] === G.digit);
+    const pool = sameDigit.length ? sameDigit : empties;
+    if (!pool.length) { Sound.play('error'); toast(t('msg.noHint')); return; }
+    target = pool[Math.floor(Math.random() * pool.length)];
+  }
+  const r = Math.floor(target / G.n), c = target % G.n;
+  pushUndo(target);
+  G.cells[target] = G.latin[r][c];
+  G.notes[target] = 0;
+  G.hints++;
+  progress.stats.hints++;
+  saveProgress();
+  G.sel = target;
+  clearPeerNotes(target);
+  Sound.play('hint');
+  toast(t('msg.hintUsed'));
+  const el = $('board').children[target];
+  if (el) { el.classList.add('hintpop'); setTimeout(() => el.classList.remove('hintpop'), 520); }
+  refreshPad();
+  const ev = refreshBoard();
+  queueSaveGame();
+  if (ev.solved) onWin();
+}
+function checkBoard() {
+  if (G.done) return;
+  const ev = refreshBoard();
+  const bad = ev.dup + ev.badCages;
+  if (bad === 0 && ev.filled > 0) { Sound.play('good'); toast(t('msg.allOk')); }
+  else if (bad === 0) { toast(t('msg.needDigit')); }
+  else {
+    Sound.play('error');
+    $('board').classList.add('shake');
+    setTimeout(() => $('board').classList.remove('shake'), 400);
+    toast(t('msg.hasConflict', { n: bad }));
+  }
+}
+
+/* ------------------------------------------------------------- timer */
+function startTick() {
+  stopTick();
+  G.started = Date.now();
+  tickTimer = setInterval(() => {
+    if (G.paused || G.done) { G.started = Date.now(); return; }
+    G.elapsed += (Date.now() - G.started) / 1000;
+    G.started = Date.now();
+    $('g-time').textContent = fmtTime(G.elapsed);
+  }, 500);
+}
+function stopTick() {
+  if (tickTimer) { clearInterval(tickTimer); tickTimer = 0; }
+}
+function syncElapsed() {
+  if (!G.paused && !G.done && G.started) {
+    G.elapsed += (Date.now() - G.started) / 1000;
+    G.started = Date.now();
+  }
+}
+
+/* --------------------------------------------------------------- win */
+function onWin() {
+  if (G.done) return;
+  syncElapsed();
+  G.done = true;
+  stopTick();
+  Sound.play('win');
+  const key = recordKey();
+  const prev = progress.records[key];
+  const isRecord = !prev || G.elapsed < prev.time;
+  if (isRecord) progress.records[key] = { time: Math.floor(G.elapsed), hints: G.hints, mistakes: G.mistakes, at: Date.now() };
+  progress.stats.clears++;
+  progress.stats.time += Math.floor(G.elapsed);
+  progress.stats.bySize[G.size] = (progress.stats.bySize[G.size] || 0) + 1;
+  let newStage = 0;
+  if (G.mode === 'stage') {
+    const u = progress.unlocked[G.size] || 1;
+    if (G.stage + 1 > u) { progress.unlocked[G.size] = G.stage + 1; newStage = G.stage + 1; }
+  }
+  saveProgress();
+  Store.del(gameKey());
+  const stars = G.hints === 0 ? (G.mistakes <= 1 ? 3 : 2) : (G.hints <= 2 ? 2 : 1);
+  showWin(stars, isRecord, prev, newStage);
+}
+function showWin(stars, isRecord, prev, newStage) {
+  const ov = $('overlay'), card = $('ov-card');
+  const isStage = G.mode === 'stage';
+  const starHtml = [0, 1, 2].map(i => '<span class="' + (i < stars ? 'on' : '') + '">★</span>').join('');
+  card.innerHTML =
+    '<div class="ov-emoji">' + (G.mode === 'daily' ? '☀' : '🎉') + '</div>' +
+    '<div class="ov-title">' + (G.mode === 'daily' ? t('win.titleDaily') : t('win.title')) + '</div>' +
+    '<div class="ov-sub">' + levelLabel() + '</div>' +
+    '<div class="stars">' + starHtml + '</div>' +
+    (isRecord ? '<div class="newrec">' + t('win.newRecord') + '</div>'
+      : '<div class="ov-sub">' + t('win.record', { time: prev ? fmtTime(prev.time) : '--:--' }) + '</div>') +
+    '<div class="ov-stats">' +
+    '<div class="ov-stat"><i>' + t('win.time') + '</i><b>' + fmtTime(G.elapsed) + '</b></div>' +
+    '<div class="ov-stat"><i>' + t('win.hints') + '</i><b>' + G.hints + '</b></div>' +
+    '<div class="ov-stat"><i>' + t('win.mistakes') + '</i><b>' + G.mistakes + '</b></div>' +
+    '</div>' +
+    (isStage
+      ? '<button class="btn btn-primary btn-lg" id="ov-next">' + (newStage ? t('msg.newStage', { n: newStage }) : t('win.next')) + '</button>'
+      : '<button class="btn btn-primary btn-lg" id="ov-menu">' + t('win.menu') + '</button>') +
+    '<div class="btn-row">' +
+    '<button class="btn btn-soft" id="ov-replay">' + t('win.replay') + '</button>' +
+    '<button class="btn btn-soft" id="ov-copy">' + t('win.copy') + '</button>' +
+    '</div>' +
+    (isStage ? '<button class="btn btn-ghost" id="ov-menu">' + t('win.menu') + '</button>' : '');
+  ov.classList.add('show');
+  const goMenu = () => { hideOverlay(); show('menu'); renderMenu(); };
+  if ($('ov-next')) $('ov-next').onclick = () => { hideOverlay(); startStage(G.size, (G.stage || 1) + 1); };
+  $('ov-replay').onclick = () => {
+    hideOverlay();
+    if (G.mode === 'stage') startStage(G.size, G.stage);
+    else startPuzzle(G.mode, G.size, G.stage, G.seed);
+  };
+  $('ov-copy').onclick = copyResult;
+  $('ov-menu').onclick = goMenu;
+}
+function hideOverlay() { $('overlay').classList.remove('show'); }
+function copyResult() {
+  const txt = String(t('win.shareText', {
+    level: levelLabel(), time: fmtTime(G.elapsed), hints: G.hints, mistakes: G.mistakes,
+    stars: '★'.repeat(G.hints === 0 ? 3 : (G.hints <= 2 ? 2 : 1)) + '☆'.repeat(3 - (G.hints === 0 ? 3 : (G.hints <= 2 ? 2 : 1)))
+  })).replace(/<[^>]+>/g, '');
+  const done = () => { Sound.play('good'); toast(t('win.copied')); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, () => legacyCopy(txt, done));
+  } else legacyCopy(txt, done);
+}
+function legacyCopy(txt, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta); done();
+  } catch (e) { /* ignore */ }
+}
+
+/* ------------------------------------------------------------ overlays */
+function showPause() {
+  syncElapsed();
+  G.paused = true;
+  $('board-cover').hidden = false;
+  queueSaveGame();
+  const card = $('ov-card');
+  card.innerHTML =
+    '<div class="ov-emoji">⏸</div>' +
+    '<div class="ov-title">' + t('pause.title') + '</div>' +
+    '<div class="ov-sub">' + levelLabel() + ' · ' + fmtTime(G.elapsed) + '</div>' +
+    '<button class="btn btn-primary btn-lg" id="pv-resume">' + t('pause.resume') + '</button>' +
+    '<button class="btn btn-soft" id="pv-restart">' + t('pause.restart') + '</button>' +
+    '<button class="btn btn-ghost" id="pv-menu">' + t('pause.menu') + '</button>';
+  $('overlay').classList.add('show');
+  $('pv-resume').onclick = resumeGame;
+  $('pv-restart').onclick = () => { hideOverlay(); startPuzzle(G.mode, G.size, G.stage, G.seed); };
+  $('pv-menu').onclick = () => { hideOverlay(); G.paused = false; $('board-cover').hidden = true; stopTick(); show('menu'); renderMenu(); };
+}
+function resumeGame() {
+  hideOverlay();
+  G.paused = false;
+  $('board-cover').hidden = true;
+  G.started = Date.now();
+  Sound.play('click');
+}
+
+/* ------------------------------------------------------------ screens */
+function renderRules() {
+  const box = $('rules-body');
+  box.innerHTML = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8']
+    .map(k => '<p class="text-small">' + t('rules.' + k) + '</p>').join('');
+}
+function fmtDur(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return (h ? h + t('stats.hours') : '') + m + t('stats.minutes');
+}
+function renderStats() {
+  const st = progress.stats;
+  const rows = [];
+  rows.push('<h2 class="card-title">' + t('stats.title') + '</h2>');
+  rows.push(kv(t('stats.clears'), st.clears));
+  rows.push(kv(t('stats.hintsUsed'), st.hints));
+  rows.push(kv(t('stats.mistakesTotal'), st.mistakes));
+  rows.push(kv(t('stats.playTime'), fmtDur(st.time)));
+  rows.push('<h2 class="card-title gap">' + t('stats.bySize') + '</h2>');
+  let any = false;
+  [4, 5, 6].forEach(sz => {
+    const b = bestOfSize(sz);
+    if (b) any = true;
+    const cleared = (progress.unlocked[sz] || 1) - 1;
+    rows.push(kv(sz + '×' + sz + ' · ' + t('stats.clearedStages') + ' ' + cleared, b ? fmtTime(b) : t('stats.noRecord')));
+  });
+  const dk = 'd:' + todayStr();
+  const dBest = [4, 5, 6].map(s => progress.records[dk + ':' + s]).filter(Boolean).sort((a, b) => a.time - b.time)[0];
+  rows.push('<h2 class="card-title gap">' + t('stats.dailyTitle') + '</h2>');
+  rows.push(kv(todayStr(), dBest ? fmtTime(dBest.time) : t('stats.noRecord')));
+  $('stats-body').innerHTML = rows.join('');
+}
+function kv(k, v) { return '<div class="kv"><span>' + k + '</span><b>' + v + '</b></div>'; }
+
+function renderSettings() {
+  const seg = $('lang-seg');
+  seg.innerHTML = '';
+  LANGS.forEach(L => {
+    const b = document.createElement('button');
+    b.textContent = L.label;
+    b.className = (L.code === lang ? 'sel' : '');
+    b.onclick = () => { setLanguage(L.code); renderSettings(); };
+    seg.appendChild(b);
+  });
+  $('sw-sound').classList.toggle('on', settings.sound);
+  $('sw-auto').classList.toggle('on', settings.autoCheck);
+  $('theme-seg').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.themeVal === settings.theme));
+  const note = $('autosave-note');
+  if (Store.broken) {
+    note.textContent = t('msg.noStorageSettings');
+    note.classList.add('danger');
+  } else {
+    note.textContent = t('settings.autosaveNote', { driver: Store.driverName });
+    note.classList.remove('danger');
+  }
+  $('about-text').textContent = t('settings.aboutText');
+}
+
+/* --------------------------------------------------------------- toast */
+let toastTimer = 0;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+/* =====================================================================
+   STARTING A PUZZLE
+   ===================================================================== */
+function seedFor(mode, size, stage, date) {
+  if (mode === 'daily') return 'KAKUZAN-DAILY-' + date + '-' + size;
+  if (mode === 'random') return 'KAKUZAN-RAND-' + Math.floor(Math.random() * 1e9);
+  return 'KAKUZAN-' + size + '-' + stage;
+}
+function startPuzzle(mode, size, stage, seed) {
+  Sound.unlock();
+  toast(t('msg.generating'));
+  setTimeout(() => {
+    const g = generatePuzzle(size, seed || seedFor(mode, size, stage), { stage: stage || 1 });
+    G.mode = mode; G.size = size; G.n = size; G.stage = stage || 1;
+    G.seed = g.seed; G.date = mode === 'daily' ? todayStr() : '';
+    G.clues = g.clues; G.latin = g.latin;
+    G.color = colorCages(size, g.clues);
+    cageAt();
+    G.cells = new Array(size * size).fill(0);
+    G.notes = new Array(size * size).fill(0);
+    G.undo = []; G.sel = -1; G.digit = 0; G.notesMode = false;
+    G.hints = 0; G.mistakes = 0; G.elapsed = 0; G.done = false; G.paused = false;
+    progress.stats.plays++;
+    $('g-level').textContent = levelLabel();
+    buildBoard(); buildPad();
+    show('game');
+    $('board-cover').hidden = true;
+    $('g-time').textContent = '00:00';
+    refreshPad(); refreshBoard();
+    startTick();
+    queueSaveGame();
+  }, 30);
+}
+function startStage(size, stage) {
+  const unlocked = progress.unlocked[size] || 1;
+  const st = Math.min(stage, unlocked);
+  if (stage > unlocked) { toast(t('msg.lockedStage', { n: stage })); return; }
+  G.size = size; G.stage = st;
+  startPuzzle('stage', size, st);
+}
+async function resumeSaved() {
+  const g = await anySavedGame();
+  if (!g) return;
+  applyLoaded(g);
+  $('g-level').textContent = levelLabel();
+  buildBoard(); buildPad();
+  show('game');
+  $('board-cover').hidden = true;
+  $('g-time').textContent = fmtTime(G.elapsed);
+  refreshPad(); refreshBoard();
+  Sound.unlock();
+  startTick();
+}
+
+/* =====================================================================
+   INPUT
+   ===================================================================== */
+function bindInput() {
+  const board = $('board');
+  let painting = false;
+  board.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    e.preventDefault();
+    Sound.unlock();
+    painting = true;
+    try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    selectCell(+cell.dataset.i);
+  });
+  board.addEventListener('pointermove', e => {
+    if (!painting || G.notesMode) return;
+    if (!G.digit) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest ? el.closest('.cell') : null;
+    if (!cell) return;
+    const i = +cell.dataset.i;
+    if (i === G.sel) return;
+    G.sel = i;
+    fillCell(i);
+  });
+  const stop = () => { painting = false; };
+  board.addEventListener('pointerup', stop);
+  board.addEventListener('pointercancel', stop);
+  board.addEventListener('pointerleave', stop);
+
+  $('t-erase').onclick = () => { Sound.unlock(); eraseCell(G.sel); };
+  $('t-undo').onclick = () => { Sound.unlock(); undoOnce(); };
+  $('t-notes').onclick = () => {
+    Sound.unlock();
+    G.notesMode = !G.notesMode;
+    if (!G.notesMode) G.digit = G.digit || 0;
+    Sound.play('tap');
+    toast(G.notesMode ? t('msg.notesOn') : t('msg.notesOff'));
+    refreshPad();
+  };
+  $('t-hint').onclick = () => { Sound.unlock(); useHint(); };
+  $('t-check').onclick = () => { Sound.unlock(); checkBoard(); };
+  $('btn-pause').onclick = () => { Sound.unlock(); showPause(); };
+  $('btn-back').onclick = async () => {
+    syncElapsed(); queueSaveGame(); stopTick();
+    show('menu'); renderMenu();
+  };
+
+  document.addEventListener('keydown', e => {
+    if (!$('screen-game').classList.contains('active')) return;
+    if ($('overlay').classList.contains('show')) return;
+    const k = e.key;
+    if (/^[1-9]$/.test(k)) {
+      const v = +k;
+      if (v <= G.n) { if (G.notesMode) toggleNoteCell(v); else { G.digit = v; if (G.sel >= 0) fillCell(G.sel); refreshPad(); } }
+      e.preventDefault();
+      return;
+    }
+    const move = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[k];
+    if (move) {
+      e.preventDefault();
+      let r = G.sel < 0 ? 0 : Math.floor(G.sel / G.n), c = G.sel < 0 ? 0 : G.sel % G.n;
+      r = Math.max(0, Math.min(G.n - 1, r + move[0]));
+      c = Math.max(0, Math.min(G.n - 1, c + move[1]));
+      selectCell(r * G.n + c);
+      return;
+    }
+    if (k === 'Backspace' || k === 'Delete' || k === ' ') { e.preventDefault(); eraseCell(G.sel); return; }
+    if (k === 'n' || k === 'N') { $('t-notes').click(); return; }
+    if (k === 'h' || k === 'H') { useHint(); return; }
+    if (k === 'c' || k === 'C') { checkBoard(); return; }
+    if (k === 'u' || k === 'U' || k === 'z' || k === 'Z') { undoOnce(); return; }
+    if (k === 'Escape') { showPause(); return; }
+  });
+}
+
+/* =====================================================================
+   SETTINGS / LANGUAGE
+   ===================================================================== */
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', settings.theme === 'dark' ? 'dark' : 'light');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', settings.theme === 'dark' ? '#0e1424' : '#f1f4fb');
+}
+function applySound() {
+  Sound.enabled = settings.sound;
+  $('sound-icon').textContent = settings.sound ? '♪' : '🔇';
+  $('sound-dot').style.display = settings.sound ? '' : 'none';
+  $('btn-sound').setAttribute('aria-pressed', String(settings.sound));
+}
+function setLanguage(code) {
+  settings.lang = code;
+  saveSettings();
+  Sound.play('click');
+  initI18n(code, () => {
+    applyI18n();
+    renderSettings();
+    renderRules();
+    if ($('screen-menu').classList.contains('active')) renderMenu();
+    if ($('screen-stats').classList.contains('active')) renderStats();
+    if ($('screen-game').classList.contains('active') && G.clues.length) {
+      $('g-level').textContent = levelLabel();
+      refreshBoard();
+    }
+  });
+}
+function bindSettings() {
+  $('btn-sound').onclick = () => {
+    Sound.enabled = true;
+    settings.sound = !settings.sound;
+    applySound(); saveSettings();
+    Sound.unlock();
+    Sound.play(settings.sound ? 'good' : 'click');
+    toast(settings.sound ? t('msg.soundOn') : t('msg.soundOff'));
+  };
+  $('sw-sound').onclick = () => $('btn-sound').click();
+  $('sw-auto').onclick = () => {
+    settings.autoCheck = !settings.autoCheck;
+    applySound(); saveSettings();
+    $('sw-auto').classList.toggle('on', settings.autoCheck);
+    Sound.play('click');
+  };
+  $('theme-seg').querySelectorAll('button').forEach(b => {
+    b.onclick = () => { settings.theme = b.dataset.themeVal; applyTheme(); renderSettings(); saveSettings(); Sound.play('click'); };
+  });
+  $('btn-reset').onclick = async () => {
+    if (!confirm(t('settings.resetConfirm'))) return;
+    for (const k of Object.keys(KEYS)) await Store.del(KEYS[k]);
+    const ks = await Store.keys();
+    for (const k of ks) if (String(k).indexOf('kakuzan') === 0) await Store.del(k);
+    progress.unlocked = { 4: 1, 5: 1, 6: 1 };
+    progress.records = {};
+    progress.stats = { clears: 0, plays: 0, hints: 0, mistakes: 0, time: 0, bySize: { 4: 0, 5: 0, 6: 0 } };
+    toast(t('settings.resetDone'));
+    renderMenu(); renderStats(); renderSettings();
+  };
+  $('btn-lang').onclick = () => {
+    const cur = LANGS.findIndex(L => L.code === lang);
+    const next = LANGS[(cur + 1) % LANGS.length];
+    setLanguage(next.code);
+  };
+  $('btn-settings-top').onclick = () => { Sound.play('click'); renderSettings(); show('settings'); };
+  $('btn-settings').onclick = () => { Sound.play('click'); renderSettings(); show('settings'); };
+  $('btn-settings-close').onclick = () => { show('menu'); renderMenu(); };
+  $('btn-rules').onclick = () => { Sound.play('click'); renderRules(); show('rules'); };
+  $('btn-rules-close').onclick = () => { show('menu'); renderMenu(); };
+  $('btn-stats').onclick = () => { Sound.play('click'); renderStats(); show('stats'); };
+  $('btn-stats-close').onclick = () => { show('menu'); renderMenu(); };
+  $('brand').onclick = () => { syncElapsed(); queueSaveGame(); stopTick(); show('menu'); renderMenu(); };
+  $('brand').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { stopTick(); show('menu'); renderMenu(); } };
+}
+function bindMenu() {
+  $('stage-prev').onclick = () => { G.stage = Math.max(1, G.stage - 1); Sound.play('click'); renderMenu(); };
+  $('stage-next').onclick = () => {
+    const u = progress.unlocked[G.size] || 1;
+    if (G.stage + 1 > u) { toast(t('msg.lockedStage', { n: G.stage + 1 })); return; }
+    G.stage++; Sound.play('click'); renderMenu();
+  };
+  $('btn-play').onclick = () => { Sound.unlock(); startStage(G.size, G.stage); };
+  $('btn-daily').onclick = () => { Sound.unlock(); startPuzzle('daily', G.size, 1, seedFor('daily', G.size, 1, todayStr())); };
+  $('btn-continue').onclick = () => { Sound.unlock(); resumeSaved(); };
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+async function boot() {
+  Sound.init();
+  await loadAll();
+  await Store.probe();
+  const guess = settings.lang || (navigator.language || 'en').slice(0, 2).toLowerCase();
+  const code = LANGS.some(L => L.code === guess) ? guess : (String(guess).indexOf('zh') === 0 ? 'zh' : 'en');
+  applyTheme();
+  applySound();
+  initI18n(code, async () => {
+    settings.lang = code;
+    applyI18n();
+    bindInput();
+    bindSettings();
+    bindMenu();
+    renderRules();
+    renderSettings();
+    show('menu');
+    await renderMenu();
+    if (Store.broken) toast(t('msg.noStorage'));
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { syncElapsed(); queueSaveGame(); stopTick(); }
+      else if ($('screen-game').classList.contains('active') && !G.paused && !G.done) startTick();
+    });
+    window.addEventListener('pagehide', () => {
+      syncElapsed();
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+      if (G.clues.length && !G.done) Store.set(gameKey(), serializeGame());
+    });
+    document.addEventListener('pointerdown', () => Sound.unlock(), { once: true });
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+/* expose pure core for automated tests (harmless in the browser) */
+window.KAKUZAN_CORE = {
+  generatePuzzle, countSolutions, evaluateBoard, cageOk, makeLatin, partitionCages, colorCages, fnv1a, mulberry32
+};
+})();
+</script>
+</body>
+</html>
